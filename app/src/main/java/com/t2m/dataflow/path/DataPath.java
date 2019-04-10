@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dualstreamdemo.dataflow.path;
+package com.t2m.dataflow.path;
 
 import android.util.Log;
 

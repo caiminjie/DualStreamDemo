@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dualstreamdemo.dataflow.data;
+package com.t2m.dataflow.data;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;

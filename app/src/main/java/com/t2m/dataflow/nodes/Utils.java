@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dualstreamdemo.dataflow.nodes;
+package com.t2m.dataflow.nodes;
 
 import android.media.AudioFormat;
 

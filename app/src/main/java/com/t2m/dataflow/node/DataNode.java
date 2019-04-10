@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dualstreamdemo.dataflow.node;
+package com.t2m.dataflow.node;
 
 import java.io.Closeable;
 import java.io.IOException;

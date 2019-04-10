@@ -1,4 +1,4 @@
-package com.t2m.dualstreamdemo.dataflow.data;
+package com.t2m.dataflow.data;
 
 import java.util.HashMap;
 
