@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Application/Application.iml" filepath="$PROJECT_DIR$/Application/Application.iml" />
-      <module fileurl="file://$PROJECT_DIR$/DualStreamDemo.iml" filepath="$PROJECT_DIR$/DualStreamDemo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/DualStreamDemo2.iml" filepath="$PROJECT_DIR$/DualStreamDemo2.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
 </project>
