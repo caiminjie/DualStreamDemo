@@ -3,8 +3,8 @@ package com.t2m.dataflow.task;
 
 import android.util.Log;
 
-import com.t2m.dualstreamdemo.dataflow.node.DataNode;
-import com.t2m.dualstreamdemo.dataflow.path.DataPath;
+import com.t2m.dataflow.node.DataNode;
+import com.t2m.dataflow.path.DataPath;
 
 import java.io.IOException;
 import java.util.ArrayList;

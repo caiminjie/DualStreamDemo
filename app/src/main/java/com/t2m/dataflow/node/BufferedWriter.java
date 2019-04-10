@@ -2,7 +2,7 @@
 package com.t2m.dataflow.node;
 
 
-import com.t2m.dualstreamdemo.dataflow.data.Data;
+import com.t2m.dataflow.data.Data;
 
 /**
  * BufferedWriter<br>

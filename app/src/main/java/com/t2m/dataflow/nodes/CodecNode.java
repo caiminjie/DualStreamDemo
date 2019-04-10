@@ -6,13 +6,13 @@ import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
-import com.t2m.dualstreamdemo.dataflow.data.AudioData;
-import com.t2m.dualstreamdemo.dataflow.data.Data;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedReader;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedWriter;
-import com.t2m.dualstreamdemo.dataflow.node.DataNode;
-import com.t2m.dualstreamdemo.dataflow.node.DirectReader;
-import com.t2m.dualstreamdemo.dataflow.node.DirectWriter;
+import com.t2m.dataflow.data.MediaData;
+import com.t2m.dataflow.data.Data;
+import com.t2m.dataflow.node.BufferedReader;
+import com.t2m.dataflow.node.BufferedWriter;
+import com.t2m.dataflow.node.DataNode;
+import com.t2m.dataflow.node.DirectReader;
+import com.t2m.dataflow.node.DirectWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -134,7 +134,7 @@ public class CodecNode extends DataNode {
         }
 
         // create buffer info & get output index & clear config format
-        MediaCodec.BufferInfo info = AudioData.setBufferInfo(data, new MediaCodec.BufferInfo());
+        MediaCodec.BufferInfo info = MediaData.setBufferInfo(data, new MediaCodec.BufferInfo());
         int encoderStatus = 0;
         encoderStatus = mCodec.dequeueOutputBuffer(info, 10000);
         Log.d(TAG, "readBegin: encoderStatus = " + encoderStatus);
@@ -144,12 +144,12 @@ public class CodecNode extends DataNode {
             return RESULT_RETRY;
         } else {
             // get buffer
-            ByteBuffer buffer = AudioData.setBuffer(data, mCodec.getOutputBuffer(outputIndex));
+            ByteBuffer buffer = MediaData.setBuffer(data, mCodec.getOutputBuffer(outputIndex));
             assert buffer != null;
 
             // set config data if necessary
-            if (AudioData.isConfig(data)) {
-                AudioData.setConfigFormat(data, mCodec.getOutputFormat());
+            if (MediaData.isConfig(data)) {
+                MediaData.setConfigFormat(data, mCodec.getOutputFormat());
             }
 
             // prepare buffer
@@ -181,8 +181,8 @@ public class CodecNode extends DataNode {
         if (inputIndex < 0) {
             return RESULT_RETRY;
         } else {
-            AudioData.setBufferInfo(data, new MediaCodec.BufferInfo());
-            ByteBuffer buffer = AudioData.setBuffer(data, mCodec.getInputBuffer(inputIndex));
+            MediaData.setBufferInfo(data, new MediaCodec.BufferInfo());
+            ByteBuffer buffer = MediaData.setBuffer(data, mCodec.getInputBuffer(inputIndex));
             assert buffer != null;
 
             buffer.clear();
@@ -199,11 +199,11 @@ public class CodecNode extends DataNode {
         int index = getInputIndex(data);
         if (index > 0) {
             // get info
-            MediaCodec.BufferInfo info = AudioData.getBufferInfo(data);
+            MediaCodec.BufferInfo info = MediaData.getBufferInfo(data);
             assert info != null;
 
-            Log.d(TAG, "writeEnd: isConfig = " + AudioData.isConfig(data) +", info :" + info);
-            if (AudioData.isConfig(data)) {
+            Log.d(TAG, "writeEnd: isConfig = " + MediaData.isConfig(data) +", info :" + info);
+            if (MediaData.isConfig(data)) {
                 mCodec.queueInputBuffer(index, 0, 0, 0, 0); // we do not accept config
             } else {
                 mCodec.queueInputBuffer(index, info.offset, info.size, info.presentationTimeUs, info.flags);

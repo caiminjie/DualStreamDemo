@@ -57,12 +57,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.t2m.dualstreamdemo.dataflow.nodes.H264EncoderNode;
-import com.t2m.dualstreamdemo.dataflow.nodes.M4aEncoderNode;
-import com.t2m.dualstreamdemo.dataflow.nodes.AudioRecordNode;
-import com.t2m.dualstreamdemo.dataflow.nodes.MediaMuxerNode;
-import com.t2m.dualstreamdemo.dataflow.path.AudioDataPath;
-import com.t2m.dualstreamdemo.dataflow.task.DataFlowTask;
+import com.t2m.dataflow.nodes.H264EncoderNode;
+import com.t2m.dataflow.nodes.M4aEncoderNode;
+import com.t2m.dataflow.nodes.AudioRecordNode;
+import com.t2m.dataflow.nodes.MediaMuxerNode;
+import com.t2m.dataflow.path.MediaDataPath;
+import com.t2m.dataflow.task.DataFlowTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -729,9 +729,9 @@ public class Camera2VideoFragment extends Fragment
         MediaMuxerNode muxerNode = new MediaMuxerNode(mNextVideoAbsolute.toString());
 
         // init path
-        AudioDataPath pathVEn2Mu = new AudioDataPath("VEn->Mu", mVideoEncoderNode.getBufferedReader(), muxerNode.getDirectWriter());
-        AudioDataPath pathRe2St = new AudioDataPath("Re->AEn", recordNode.getBufferedReader(), mAudioEncoderNode.getBufferedWriter());
-        AudioDataPath pathAEn2Mu = new AudioDataPath("AEn->Mu", mAudioEncoderNode.getBufferedReader(), muxerNode.getDirectWriter());
+        MediaDataPath pathVEn2Mu = new MediaDataPath("VEn->Mu", mVideoEncoderNode.getBufferedReader(), muxerNode.getDirectWriter());
+        MediaDataPath pathRe2St = new MediaDataPath("Re->AEn", recordNode.getBufferedReader(), mAudioEncoderNode.getBufferedWriter());
+        MediaDataPath pathAEn2Mu = new MediaDataPath("AEn->Mu", mAudioEncoderNode.getBufferedReader(), muxerNode.getDirectWriter());
         // create task
         mRecordTask = new DataFlowTask("RecordTask");
         mRecordTask
@@ -752,9 +752,9 @@ public class Camera2VideoFragment extends Fragment
 ////        AudioRecordNode recordNode1 = new AudioRecordNode(MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
 //
 //        // init path
-//        AudioDataPath pathVEn2Mu1 = new AudioDataPath("VEn->Mu--1", mVideoEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
-//        AudioDataPath pathRe2St1 = new AudioDataPath("Re->AEn--1", recordNode.getBufferedReader(), mAudioEncoderNode1.getBufferedWriter());
-//        AudioDataPath pathAEn2Mu1 = new AudioDataPath("AEn->Mu--1", mAudioEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
+//        MediaDataPath pathVEn2Mu1 = new MediaDataPath("VEn->Mu--1", mVideoEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
+//        MediaDataPath pathRe2St1 = new MediaDataPath("Re->AEn--1", recordNode.getBufferedReader(), mAudioEncoderNode1.getBufferedWriter());
+//        MediaDataPath pathAEn2Mu1 = new MediaDataPath("AEn->Mu--1", mAudioEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
 //        // create task
 //        mRecordTask1 = new DataFlowTask("RecordTask1");
 //        mRecordTask1

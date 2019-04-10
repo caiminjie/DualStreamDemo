@@ -8,10 +8,10 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 
 /**
- * AudioData
+ * MediaData
  */
-public class AudioData {
-    private static final String TAG = AudioData.class.getSimpleName();
+public class MediaData {
+    private static final String TAG = MediaData.class.getSimpleName();
 
     public static final String KEY_DATA_BYTE_BUFFER = "key-data-byte-buffer";
     public static final String KEY_DATA_BUFFER_INFO = "key-data-buffer-info";
@@ -24,17 +24,17 @@ public class AudioData {
     }
 
     public static void copyData(Data fromData, Data toData) {
-        ByteBuffer writeBuffer = AudioData.getBuffer(toData);
+        ByteBuffer writeBuffer = MediaData.getBuffer(toData);
         assert writeBuffer != null;
-        MediaCodec.BufferInfo writeInfo = AudioData.getBufferInfo(toData);
+        MediaCodec.BufferInfo writeInfo = MediaData.getBufferInfo(toData);
         assert writeInfo != null;
-        ByteBuffer readBuffer = AudioData.getBuffer(fromData);
+        ByteBuffer readBuffer = MediaData.getBuffer(fromData);
         assert readBuffer != null;
-        MediaCodec.BufferInfo readInfo = AudioData.getBufferInfo(fromData);
+        MediaCodec.BufferInfo readInfo = MediaData.getBufferInfo(fromData);
         assert readInfo != null;
 
-        if (AudioData.hasConfigFormat(fromData)) {
-            AudioData.setConfigFormat(toData, AudioData.getConfigFormat(fromData));
+        if (MediaData.hasConfigFormat(fromData)) {
+            MediaData.setConfigFormat(toData, MediaData.getConfigFormat(fromData));
         } else {
             writeBuffer.clear();
             writeBuffer.put(readBuffer);

@@ -6,13 +6,13 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
-import com.t2m.dualstreamdemo.dataflow.data.AudioData;
-import com.t2m.dualstreamdemo.dataflow.data.Data;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedReader;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedWriter;
-import com.t2m.dualstreamdemo.dataflow.node.DataNode;
-import com.t2m.dualstreamdemo.dataflow.node.DirectReader;
-import com.t2m.dualstreamdemo.dataflow.node.DirectWriter;
+import com.t2m.dataflow.data.MediaData;
+import com.t2m.dataflow.data.Data;
+import com.t2m.dataflow.node.BufferedReader;
+import com.t2m.dataflow.node.BufferedWriter;
+import com.t2m.dataflow.node.DataNode;
+import com.t2m.dataflow.node.DirectReader;
+import com.t2m.dataflow.node.DirectWriter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -124,14 +124,14 @@ public class MediaMuxerNode extends DataNode {
             return RESULT_NOT_OPEN;
         }
 
-        if (AudioData.isConfig(data)) {
+        if (MediaData.isConfig(data)) {
             Log.d(TAG, "write: the muxer is " + mMuxer);
-            if (MediaFormat.MIMETYPE_VIDEO_AVC.equals(AudioData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))){
-                mVideoFormat = AudioData.getConfigFormat(data);
+            if (MediaFormat.MIMETYPE_VIDEO_AVC.equals(MediaData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))){
+                mVideoFormat = MediaData.getConfigFormat(data);
                 mVideoTrackIndex = mMuxer.addTrack(mVideoFormat);
                 mIsVideoConfigured = true;
-            } else if (MediaFormat.MIMETYPE_AUDIO_AAC.equals(AudioData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))) {
-                mAudioFormat = AudioData.getConfigFormat(data);
+            } else if (MediaFormat.MIMETYPE_AUDIO_AAC.equals(MediaData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))) {
+                mAudioFormat = MediaData.getConfigFormat(data);
                 mAudioTrackIndex = mMuxer.addTrack(mAudioFormat);
                 mIsAudioConfigured = true;
             }
@@ -149,9 +149,9 @@ public class MediaMuxerNode extends DataNode {
                 ByteBuffer buffer = null;
                 MediaCodec.BufferInfo info = null;
 
-                buffer = AudioData.getBuffer(data);
+                buffer = MediaData.getBuffer(data);
                 assert buffer != null;
-                info = AudioData.getBufferInfo(data);
+                info = MediaData.getBufferInfo(data);
                 assert info != null;
                 buffer.position(info.offset);
 
@@ -159,8 +159,8 @@ public class MediaMuxerNode extends DataNode {
                 if (info != null && info.size > 0) {
                     info.presentationTimeUs = getPTSUs();
                     boolean keyFrame = (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
-                    Log.d(TAG, "write: ----type  = " + AudioData.getConfigFormat(data).getString(MediaFormat.KEY_MIME) + ", key frame = " + keyFrame);
-                    if (MediaFormat.MIMETYPE_VIDEO_AVC.equals(AudioData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))){
+                    Log.d(TAG, "write: ----type  = " + MediaData.getConfigFormat(data).getString(MediaFormat.KEY_MIME) + ", key frame = " + keyFrame);
+                    if (MediaFormat.MIMETYPE_VIDEO_AVC.equals(MediaData.getConfigFormat(data).getString(MediaFormat.KEY_MIME))){
                         mMuxer.writeSampleData(mVideoTrackIndex, buffer, info);
                     } else {
                         mMuxer.writeSampleData(mAudioTrackIndex, buffer, info);

@@ -3,12 +3,12 @@ package com.t2m.dataflow.path;
 
 import android.util.Log;
 
-import com.t2m.dualstreamdemo.dataflow.data.Data;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedReader;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedWriter;
-import com.t2m.dualstreamdemo.dataflow.node.DataNode;
-import com.t2m.dualstreamdemo.dataflow.node.DirectReader;
-import com.t2m.dualstreamdemo.dataflow.node.DirectWriter;
+import com.t2m.dataflow.data.Data;
+import com.t2m.dataflow.node.BufferedReader;
+import com.t2m.dataflow.node.BufferedWriter;
+import com.t2m.dataflow.node.DataNode;
+import com.t2m.dataflow.node.DirectReader;
+import com.t2m.dataflow.node.DirectWriter;
 
 /**
  * Data path from Node and Node

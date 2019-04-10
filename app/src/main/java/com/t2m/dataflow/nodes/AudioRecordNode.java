@@ -5,13 +5,13 @@ import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.util.Log;
 
-import com.t2m.dualstreamdemo.dataflow.data.AudioData;
-import com.t2m.dualstreamdemo.dataflow.data.Data;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedReader;
-import com.t2m.dualstreamdemo.dataflow.node.BufferedWriter;
-import com.t2m.dualstreamdemo.dataflow.node.DataNode;
-import com.t2m.dualstreamdemo.dataflow.node.DirectReader;
-import com.t2m.dualstreamdemo.dataflow.node.DirectWriter;
+import com.t2m.dataflow.data.MediaData;
+import com.t2m.dataflow.data.Data;
+import com.t2m.dataflow.node.BufferedReader;
+import com.t2m.dataflow.node.BufferedWriter;
+import com.t2m.dataflow.node.DataNode;
+import com.t2m.dataflow.node.DirectReader;
+import com.t2m.dataflow.node.DirectWriter;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -165,15 +165,15 @@ public class AudioRecordNode extends DataNode {
                 mSampleCount += nRead / mBytesPerSample / mChannelCount;
             }
 
-            AudioData.setBufferInfo(data, info);
-            AudioData.setBuffer(data, buffer);
+            MediaData.setBufferInfo(data, info);
+            MediaData.setBuffer(data, buffer);
 
             return RESULT_OK;
         }
     }
 
     private int readEnd(Data data) {
-        ByteBuffer buffer = AudioData.getBuffer(data);
+        ByteBuffer buffer = MediaData.getBuffer(data);
         cache(buffer);
         return RESULT_OK;
     }
