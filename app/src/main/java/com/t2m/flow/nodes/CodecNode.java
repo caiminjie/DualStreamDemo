@@ -1,18 +1,17 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dataflow.nodes;
+package com.t2m.flow.nodes;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
-import com.t2m.dataflow.data.MediaData;
-import com.t2m.dataflow.data.Data;
-import com.t2m.dataflow.node.BufferedReader;
-import com.t2m.dataflow.node.BufferedWriter;
-import com.t2m.dataflow.node.DataNode;
-import com.t2m.dataflow.node.DirectReader;
-import com.t2m.dataflow.node.DirectWriter;
+import com.t2m.flow.data.ByteBufferData;
+import com.t2m.flow.data.Data;
+import com.t2m.flow.data.DataHolder;
+import com.t2m.flow.node.Node;
+import com.t2m.flow.path.Plug;
+import com.t2m.flow.path.Slot;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,7 +20,7 @@ import java.security.InvalidParameterException;
 /**
  * Codec Node for encode & decode
  */
-public class CodecNode extends DataNode {
+public class CodecNode extends Node {
     private static final String TAG = CodecNode.class.getSimpleName();
 
     private static final String KEY_CODEC_OUTPUT_INDEX = "key-codec-output-index";
@@ -32,41 +31,48 @@ public class CodecNode extends DataNode {
     private MediaFormat mFormat;
     private Surface mSurface;
 
-    private BufferedReader mBufferedReader = new BufferedReader() {
+    private Plug mPlugReader = new Plug() {
         @Override
-        public int readBegin(Data data) {
-            return CodecNode.this.readBegin(data);
+        public int getData(DataHolder holder) {
+            return plugReaderGetData(holder);
         }
 
         @Override
-        public int readEnd(Data data) {
-            return CodecNode.this.readEnd(data);
+        public int release(Data data) {
+            return plugReaderRelease(data);
         }
     };
-    private BufferedWriter mBufferedWriter = new BufferedWriter() {
+    private Plug mPlugWriter = new Plug() {
         @Override
-        public int writeBegin(Data data) {
-            return CodecNode.this.writeBegin(data);
+        public int getData(DataHolder holder) {
+            return plugWriterGetData(holder);
         }
 
         @Override
-        public int writeEnd(Data data) {
-            return CodecNode.this.writeEnd(data);
+        public int release(Data data) {
+            return plugWriterRelease(data);
+        }
+
+        @Override
+        public boolean bypass() {
+            return false;
         }
     };
 
-    public CodecNode(boolean isEncoder, MediaFormat format)  {
+    public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
+        super(name);
+
         mIsEncoder = isEncoder;
         mFormat = format;
 
         // verify format
         if (mFormat == null) {
-            throw new InvalidParameterException("null format");
+            throw new InvalidParameterException("[" + mName + "] null format");
         }
     }
 
     @Override
-    public DataNode open() throws IOException {
+    public Node open() throws IOException {
         if (isOpened()) {
             return this; // already opened
         }
@@ -107,58 +113,60 @@ public class CodecNode extends DataNode {
     }
 
     @Override
-    public BufferedReader getBufferedReader() {
-        return mBufferedReader;
+    public Plug plugReader(int index) {
+        return mPlugReader;
     }
 
     @Override
-    public BufferedWriter getBufferedWriter() {
-        return mBufferedWriter;
+    public Plug plugWriter(int index) {
+        return mPlugWriter;
     }
 
     @Deprecated
     @Override
-    public DirectReader getDirectReader() {
-        throw new InvalidParameterException("method not supported");
+    public Slot slotReader(int index) {
+        throw new InvalidParameterException("[" + mName + "] method not supported");
     }
 
     @Deprecated
     @Override
-    public DirectWriter getDirectWriter() {
-        throw new InvalidParameterException("method not supported");
+    public Slot slotWriter(int index) {
+        throw new InvalidParameterException("[" + mName + "] method not supported");
     }
 
-    private int readBegin(Data data) {
+    private int plugReaderGetData(DataHolder holder) {
         if (!isOpened()) {
             return RESULT_NOT_OPEN;
         }
 
-        // create buffer info & get output index & clear config format
-        MediaCodec.BufferInfo info = MediaData.setBufferInfo(data, new MediaCodec.BufferInfo());
-        int encoderStatus = 0;
-        encoderStatus = mCodec.dequeueOutputBuffer(info, 10000);
-        Log.d(TAG, "readBegin: encoderStatus = " + encoderStatus);
+        // onCreate buffer info & get output index & clear config format
+        ByteBufferData data = ByteBufferData.create();
+        MediaCodec.BufferInfo info = data.setBufferInfo(new MediaCodec.BufferInfo());
+        int encoderStatus = mCodec.dequeueOutputBuffer(info, 10000);
+        Log.d(TAG, "[" + mName + "] plugReaderGetData: encoderStatus = " + encoderStatus);
         int outputIndex = setOutputIndex(data, encoderStatus);
 
         if (outputIndex < 0) {
+            data.release();
             return RESULT_RETRY;
         } else {
             // get buffer
-            ByteBuffer buffer = MediaData.setBuffer(data, mCodec.getOutputBuffer(outputIndex));
+            ByteBuffer buffer = data.setBuffer(mCodec.getOutputBuffer(outputIndex));
             assert buffer != null;
 
             // set config data if necessary
-            if (MediaData.isConfig(data)) {
-                MediaData.setConfigFormat(data, mCodec.getOutputFormat());
+            if (data.isConfig()) {
+                data.setConfigFormat(mCodec.getOutputFormat());
             }
 
             // prepare buffer
             buffer.position(info.offset);
+            holder.data = data;
             return RESULT_OK;
         }
     }
 
-    private int readEnd(Data data) {
+    private int plugReaderRelease(Data data) {
         if (!isOpened()) {
             return RESULT_NOT_OPEN;
         }
@@ -167,48 +175,54 @@ public class CodecNode extends DataNode {
         if (index > 0) {
             mCodec.releaseOutputBuffer(index, false);
         }
+
         return RESULT_OK;
     }
 
-    private int writeBegin(Data data) {
+    private int plugWriterGetData(DataHolder holder) {
         if (!isOpened()) {
             return RESULT_NOT_OPEN;
         }
 
-
+        ByteBufferData data = ByteBufferData.create();
         int inputIndex = setInputIndex(data, mCodec.dequeueInputBuffer(10000));
-        Log.d(TAG, "writeBegin: inputIndex = " + inputIndex + ", data = " + data);
+        Log.d(TAG, "[" + mName + "] plugWriterGetData: inputIndex = " + inputIndex + ", data = " + data);
         if (inputIndex < 0) {
+            data.release();
             return RESULT_RETRY;
         } else {
-            MediaData.setBufferInfo(data, new MediaCodec.BufferInfo());
-            ByteBuffer buffer = MediaData.setBuffer(data, mCodec.getInputBuffer(inputIndex));
+            data.setBufferInfo(new MediaCodec.BufferInfo());
+            ByteBuffer buffer = data.setBuffer(mCodec.getInputBuffer(inputIndex));
             assert buffer != null;
 
             buffer.clear();
+            holder.data = data;
             return RESULT_OK;
         }
     }
 
-    private int writeEnd(Data data) {
+    private int plugWriterRelease(Data data) {
         if (!isOpened()) {
             return RESULT_NOT_OPEN;
         }
 
+        ByteBufferData d = (ByteBufferData) data;
+
         // get index
-        int index = getInputIndex(data);
+        int index = getInputIndex(d);
         if (index > 0) {
             // get info
-            MediaCodec.BufferInfo info = MediaData.getBufferInfo(data);
+            MediaCodec.BufferInfo info = d.getBufferInfo();
             assert info != null;
 
-            Log.d(TAG, "writeEnd: isConfig = " + MediaData.isConfig(data) +", info :" + info);
-            if (MediaData.isConfig(data)) {
+            Log.d(TAG, "[" + mName + "] plugWriterRelease: isConfig = " + d.isConfig() +", info :" + info);
+            if (d.isConfig()) {
                 mCodec.queueInputBuffer(index, 0, 0, 0, 0); // we do not accept config
             } else {
                 mCodec.queueInputBuffer(index, info.offset, info.size, info.presentationTimeUs, info.flags);
             }
         }
+
         return RESULT_OK;
     }
 

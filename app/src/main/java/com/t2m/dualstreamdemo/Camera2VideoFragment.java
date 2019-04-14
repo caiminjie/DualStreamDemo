@@ -57,12 +57,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.t2m.dataflow.nodes.H264EncoderNode;
-import com.t2m.dataflow.nodes.M4aEncoderNode;
-import com.t2m.dataflow.nodes.AudioRecordNode;
-import com.t2m.dataflow.nodes.SegmentMuxerNode;
-import com.t2m.dataflow.path.MediaDataPath;
-import com.t2m.dataflow.task.DataFlowTask;
+import com.t2m.flow.nodes.H264EncoderNode;
+import com.t2m.flow.nodes.M4aEncoderNode;
+import com.t2m.flow.nodes.AudioRecordNode;
+import com.t2m.flow.nodes.SegmentMuxerNode;
+import com.t2m.flow.path.ByteBufferPath;
+import com.t2m.flow.task.FlowTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -718,22 +718,22 @@ public class Camera2VideoFragment extends Fragment
             mNextVideoAbsolute2 = getVideoFile(getActivity());
         }
 
-        // create node
+        // onCreate node
         try {
-            mVideoEncoderNode = (H264EncoderNode) new H264EncoderNode("video/avc", 1920,1080, 10000000, 30).open();
+            mVideoEncoderNode = (H264EncoderNode) new H264EncoderNode("VideoEncoderNode", "video/avc", 1920,1080, 10000000, 30).open();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        AudioRecordNode recordNode = new AudioRecordNode(MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
-        mAudioEncoderNode = new  M4aEncoderNode();
-        SegmentMuxerNode SegmentMuxerNode = new SegmentMuxerNode(mNextVideoAbsolute.toString());
+        AudioRecordNode recordNode = new AudioRecordNode("AudioRecorderNode", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
+        mAudioEncoderNode = new  M4aEncoderNode("AudioEncoderNode");
+        SegmentMuxerNode SegmentMuxerNode = new SegmentMuxerNode("MuxerNode", mNextVideoAbsolute.toString());
 
         // init path
-        MediaDataPath pathVEn2Mu = new MediaDataPath("VEn->Mu", mVideoEncoderNode.getBufferedReader(), SegmentMuxerNode.getDirectWriter());
-        MediaDataPath pathRe2St = new MediaDataPath("Re->AEn", recordNode.getBufferedReader(), mAudioEncoderNode.getBufferedWriter());
-        MediaDataPath pathAEn2Mu = new MediaDataPath("AEn->Mu", mAudioEncoderNode.getBufferedReader(), SegmentMuxerNode.getDirectWriter());
-        // create task
-        mRecordTask = new DataFlowTask("RecordTask");
+        ByteBufferPath pathVEn2Mu = new ByteBufferPath("VEn->Mu", mVideoEncoderNode.plugReader(), SegmentMuxerNode.slotVideoWriter());
+        ByteBufferPath pathRe2St = new ByteBufferPath("Re->AEn", recordNode.plugReader(), mAudioEncoderNode.plugWriter());
+        ByteBufferPath pathAEn2Mu = new ByteBufferPath("AEn->Mu", mAudioEncoderNode.plugReader(), SegmentMuxerNode.slotAudioWriter());
+        // onCreate task
+        mRecordTask = new FlowTask("RecordTask");
         mRecordTask
                 .addNode(recordNode)
                 .addNode(mAudioEncoderNode)
@@ -743,37 +743,11 @@ public class Camera2VideoFragment extends Fragment
                 .addPath(pathRe2St)
                 .addPath(pathAEn2Mu)
                 .addPath(pathVEn2Mu);
-
-
-
-//        mVideoEncoderNode1 = new H264EncoderNode("video/avc", 720,480, 10000000, 30);
-//        mAudioEncoderNode1 = new  M4aEncoderNode();
-//        MediaMuxerNode muxerNode1 = new MediaMuxerNode(mNextVideoAbsolute2.toString());
-////        AudioRecordNode recordNode1 = new AudioRecordNode(MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
-//
-//        // init path
-//        MediaDataPath pathVEn2Mu1 = new MediaDataPath("VEn->Mu--1", mVideoEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
-//        MediaDataPath pathRe2St1 = new MediaDataPath("Re->AEn--1", recordNode.getBufferedReader(), mAudioEncoderNode1.getBufferedWriter());
-//        MediaDataPath pathAEn2Mu1 = new MediaDataPath("AEn->Mu--1", mAudioEncoderNode1.getBufferedReader(), muxerNode1.getDirectWriter());
-//        // create task
-//        mRecordTask1 = new DataFlowTask("RecordTask1");
-//        mRecordTask1
-//                .addNode(recordNode)
-//                .addNode(mAudioEncoderNode1)
-//                .addNode(mVideoEncoderNode1)
-//                .addNode(muxerNode1);
-//        mRecordTask1
-//                .addPath(pathRe2St1)
-//                .addPath(pathAEn2Mu1)
-//                .addPath(pathVEn2Mu1);
     }
 
-    private DataFlowTask mRecordTask;
+    private FlowTask mRecordTask;
     private M4aEncoderNode mAudioEncoderNode;
     private H264EncoderNode mVideoEncoderNode;
-    private DataFlowTask mRecordTask1;
-    private M4aEncoderNode mAudioEncoderNode1;
-    private H264EncoderNode mVideoEncoderNode1;
 
     public void stopRecord(boolean wait) {
         if (mRecordTask != null) {

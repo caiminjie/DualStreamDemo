@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dataflow.nodes;
+package com.t2m.flow.nodes;
 
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
@@ -8,8 +8,8 @@ import android.media.MediaFormat;
  * Encoder Node for M4A
  */
 public class M4aEncoderNode extends CodecNode {
-    public M4aEncoderNode() {
-        super(true, createFormat());
+    public M4aEncoderNode(String name) {
+        super(name, true, createFormat());
     }
 
     private static MediaFormat createFormat() {

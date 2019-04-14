@@ -1,10 +1,10 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dataflow.task;
+package com.t2m.flow.task;
 
 import android.util.Log;
 
-import com.t2m.dataflow.node.DataNode;
-import com.t2m.dataflow.path.DataPath;
+import com.t2m.flow.node.Node;
+import com.t2m.flow.path.Path;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,26 +13,24 @@ import java.util.List;
 /**
  * Data flow task
  */
-public class DataFlowTask extends Thread {
-    private static final String TAG = DataFlowTask.class.getSimpleName();
+public class FlowTask extends Thread {
+    private static final String TAG = FlowTask.class.getSimpleName();
 
-    private static final boolean DEBUG_PERFORMANCE = false; // MODIFIED by Fan.Hu, 2018-01-19,BUG-5709670
+    private static final boolean DEBUG_PERFORMANCE = false;
 
-    /* MODIFIED-BEGIN by Fan.Hu, 2018-01-18,BUG-5709670*/
     public static final int RESULT_OK = 0;
     public static final int RESULT_ERROR = 1;
     public static final int RESULT_NOT_FINISHED = 2;
 
-    private final List<DataNode> mNodeList = new ArrayList<>();
-    private final List<DataPath> mPathList = new ArrayList<>();
+    private final List<Node> mNodeList = new ArrayList<>();
+    private final List<Path> mPathList = new ArrayList<>();
     private int mResult = RESULT_NOT_FINISHED;
-    /* MODIFIED-END by Fan.Hu,BUG-5709670*/
 
-    public DataFlowTask(String name) {
+    public FlowTask(String name) {
         super(name);
     }
 
-    public DataFlowTask addNode(DataNode node) {
+    public FlowTask addNode(Node node) {
         if (isAlive()) {
             throw new IllegalStateException("Should not add node duration task is running");
         }
@@ -42,7 +40,7 @@ public class DataFlowTask extends Thread {
         return this;
     }
 
-    public DataFlowTask addPath(DataPath path) {
+    public FlowTask addPath(Path path) {
         if (isAlive()) {
             throw new IllegalStateException("Should not add node duration task is running");
         }
@@ -54,12 +52,10 @@ public class DataFlowTask extends Thread {
 
     @Override
     public void run() {
-        /* MODIFIED-BEGIN by Fan.Hu, 2018-01-19,BUG-5709670*/
         long startTime;
         if (DEBUG_PERFORMANCE) {
             startTime = System.currentTimeMillis();
         }
-        /* MODIFIED-END by Fan.Hu,BUG-5709670*/
 
         // for child class to do something
         onCreate();
@@ -67,46 +63,42 @@ public class DataFlowTask extends Thread {
         // do run
         try {
             // open
-            for (DataNode node : mNodeList) {
+            for (Node node : mNodeList) {
                 node.open();
             }
 
             // process
-            for (DataPath path : mPathList) {
+            for (Path path : mPathList) {
                 path.processAsync();
             }
 
             // wait
-            for (DataPath path : mPathList) {
+            for (Path path : mPathList) {
                 path.waitForFinish();
             }
 
             // close
-            for (DataNode node : mNodeList) {
+            for (Node node : mNodeList) {
                 node.close();
             }
 
-            /* MODIFIED-BEGIN by Fan.Hu, 2018-01-18,BUG-5709670*/
             mResult = RESULT_OK;
         } catch (IOException e) {
-            Log.e(TAG, "DataFlowTask.run()# failed", e);
+            Log.e(TAG, "FlowTask.run()# failed", e);
             mResult = RESULT_ERROR;
-            /* MODIFIED-END by Fan.Hu,BUG-5709670*/
         } finally {
             // for child class to do something
             onDestroy();
 
-            /* MODIFIED-BEGIN by Fan.Hu, 2018-01-19,BUG-5709670*/
             if (DEBUG_PERFORMANCE) {
-                Log.i("==Performance==", "DataFlowTask.run()# " + (System.currentTimeMillis() - startTime));
+                Log.i("==Performance==", "FlowTask.run()# " + (System.currentTimeMillis() - startTime));
             }
-            /* MODIFIED-END by Fan.Hu,BUG-5709670*/
         }
     }
 
     /* MODIFIED-BEGIN by Fan.Hu, 2018-01-20,BUG-5709670*/
     public void cancel() {
-        for (DataPath path : mPathList) {
+        for (Path path : mPathList) {
             path.cancel();
             /* MODIFIED-END by Fan.Hu,BUG-5709670*/
         }

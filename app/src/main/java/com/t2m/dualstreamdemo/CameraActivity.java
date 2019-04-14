@@ -16,20 +16,53 @@
 
 package com.t2m.dualstreamdemo;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 public class CameraActivity extends Activity {
+    String[] PERMISSIONS = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
-        if (null == savedInstanceState) {
+
+
+
+        if (checkPermission()) {
+            if (null == savedInstanceState) {
+                getFragmentManager().beginTransaction()
+                        .replace(R.id.container, Camera2VideoFragment.newInstance())
+                        .commit();
+            }
+        } else {
+            requestPermissions(PERMISSIONS, 0);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (checkPermission()) {
             getFragmentManager().beginTransaction()
                     .replace(R.id.container, Camera2VideoFragment.newInstance())
                     .commit();
         }
+    }
+
+    private boolean checkPermission() {
+        for (String permission : PERMISSIONS) {
+            if (PackageManager.PERMISSION_GRANTED != checkSelfPermission(permission)) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

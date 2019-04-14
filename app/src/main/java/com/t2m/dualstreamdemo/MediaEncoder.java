@@ -32,7 +32,7 @@ public abstract class MediaEncoder implements Runnable {
         Log.d(TAG, mCodecName + "MediaEncoder : before");
         synchronized (mSync) {
             Log.d(TAG, mCodecName + "MediaEncoder : get");
-            // create BufferInfo here for effectiveness(to reduce GC)
+            // onCreate BufferInfo here for effectiveness(to reduce GC)
             mBufferInfo = new MediaCodec.BufferInfo();
             // wait for starting thread
             new Thread(this, getClass().getSimpleName()).start();

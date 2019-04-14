@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.dataflow.nodes;
+package com.t2m.flow.nodes;
 
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
@@ -8,8 +8,8 @@ import android.media.MediaFormat;
  * Encoder Node for M4A
  */
 public class H264EncoderNode extends CodecNode {
-    public H264EncoderNode(String type, int width, int height, int bit, int frameRate) {
-        super(true, createFormat(type, width, height, bit, frameRate));
+    public H264EncoderNode(String name, String type, int width, int height, int bit, int frameRate) {
+        super(name, true, createFormat(type, width, height, bit, frameRate));
     }
 
     private static MediaFormat createFormat(String type, int width, int height, int bit, int frameRate) {

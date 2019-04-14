@@ -48,7 +48,7 @@ public class MediaAudioEncoder extends MediaEncoder {
     @Override
     protected void startRecording() {
         super.startRecording();
-        // create and execute audio capturing thread using internal mic
+        // onCreate and execute audio capturing thread using internal mic
         if (mAudioThread == null) {
             mAudioThread = new AudioThread();
             mAudioThread.start();
