@@ -15,6 +15,8 @@ public class ByteBufferData extends Data {
     private static final String KEY_DATA_BUFFER_INFO = "key-data-buffer-info";
     private static final String KEY_CONFIG_MEDIA_FORMAT = "key-config-media-format";
 
+    protected ByteBufferData mParent = null;
+
     private static Cache<ByteBufferData> sCache = new Cache<>(
             "ByteBufferData",
             ByteBufferData::new,
@@ -23,6 +25,12 @@ public class ByteBufferData extends Data {
 
     private ByteBufferData() {
         super();
+    }
+
+    @Override
+    public void setParent(Data data) {
+        super.setParent(data);
+        mParent = (ByteBufferData) super.mParent;
     }
 
     public static ByteBufferData create() {
@@ -40,25 +48,25 @@ public class ByteBufferData extends Data {
     }
 
     public static void copyData(ByteBufferData fromData, ByteBufferData toData) {
-        ByteBuffer writeBuffer = toData.getBuffer();
-        assert writeBuffer != null;
-        MediaCodec.BufferInfo writeInfo = toData.getBufferInfo();
-        assert writeInfo != null;
-        ByteBuffer readBuffer = fromData.getBuffer();
-        assert readBuffer != null;
-        MediaCodec.BufferInfo readInfo = fromData.getBufferInfo();
-        assert readInfo != null;
+        ByteBuffer toBuffer = toData.getBuffer();
+        assert toBuffer != null;
+        MediaCodec.BufferInfo toInfo = toData.getBufferInfo();
+        assert toInfo != null;
+        ByteBuffer fromBuffer = fromData.getBuffer();
+        assert fromBuffer != null;
+        MediaCodec.BufferInfo fromInfo = fromData.getBufferInfo();
+        assert fromInfo != null;
 
         if (fromData.hasConfigFormat()) {
             toData.setConfigFormat(fromData.getConfigFormat());
         } else {
-            writeBuffer.clear();
-            writeBuffer.put(readBuffer);
+            toBuffer.clear();
+            toBuffer.put(fromBuffer);
         }
-        writeInfo.offset = 0;
-        writeInfo.size = readInfo.size;
-        writeInfo.presentationTimeUs = readInfo.presentationTimeUs;
-        writeInfo.flags = readInfo.flags;
+        toInfo.offset = 0;
+        toInfo.size = fromInfo.size;
+        toInfo.presentationTimeUs = fromInfo.presentationTimeUs;
+        toInfo.flags = fromInfo.flags;
     }
 
     public ByteBuffer setBuffer(ByteBuffer buffer) {

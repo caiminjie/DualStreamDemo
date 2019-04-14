@@ -9,6 +9,8 @@ import java.util.Map;
 
 public class Data {
     private Map<String, Object> mMap = new HashMap<>();
+    protected int mRef = 0;
+    protected Data mParent = null;
 
     public interface OnReleaseListener {
         int onRelease(Data data);
@@ -16,13 +18,36 @@ public class Data {
 
     private List<OnReleaseListener> mReleaseListeners = new ArrayList<>();
 
+    public void setParent(Data data) {
+        if (data != null) {
+            mParent = data;
+            synchronized (mParent) {
+                mParent.mRef++;
+            }
+        } else {
+            mParent = null;
+        }
+    }
+
     @SuppressWarnings({"unchecked", "deprecation"})
     public <T> T get(String key, T defValue) {
+        // get keys from local first
         Object value = mMap.get(key);
-        return (value == null) ? defValue : (T) value;
+
+        if (value == null) {
+            // get from parent
+            if (mParent != null) {
+                return mParent.get(key, defValue);
+            } else {
+                return defValue;
+            }
+        } else {
+            return (T) value;
+        }
     }
 
     public <T> T set(String key, T value) {
+        // only allowed to set local. parent is read only.
         if (value == null) {
             mMap.remove(key);
         } else {
@@ -46,6 +71,21 @@ public class Data {
         mReleaseListeners.clear(); // clear listener
         mMap.clear(); // clear contents
 
+        // check parent
+        if (mParent != null) {
+            synchronized (mParent) {
+                mParent.mRef --;
+
+                // release parent if necessary
+                if (mParent.mRef <= 0) {
+                    int r = mParent.release();
+                    if (r != Node.RESULT_OK) {
+                        result = r;
+                    }
+                }
+            }
+        }
+
         return result;
     }
 
@@ -56,6 +96,6 @@ public class Data {
     }
 
     public boolean hasKey(String key) {
-        return mMap.containsKey(key);
+        return mMap.containsKey(key) || (mParent != null && mParent.hasKey(key));
     }
 }

@@ -58,8 +58,9 @@ public class Cache <T> {
                 mOnGet.onGet(data);
             }
 
-            mLeakCount ++;
+            // debug leak
             if (DEBUG_LEAK) {
+                mLeakCount ++;
                 Log.w(TAG, "[" + mName + "] leak: " + mLeakCount);
             }
 
@@ -70,7 +71,10 @@ public class Cache <T> {
     @SuppressWarnings("unchecked")
     public void put(T data) {
         synchronized (mCachedBuffs) {
-            mLeakCount --;
+            // debug leak
+            if (DEBUG_LEAK) {
+                mLeakCount--;
+            }
 
             if (mOnPut != null) {
                 mOnPut.onPut(data);
