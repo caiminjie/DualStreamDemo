@@ -28,6 +28,7 @@ public abstract class Plug {
      * Whether data should bypass this node when it it used as a writer.
      * @return true: bypass; false: otherwise
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean bypass() {
         return false;
     }

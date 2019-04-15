@@ -176,6 +176,7 @@ public abstract class Path {
         return mCanceled;
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     static boolean isThreadInterrupted() {
         return Thread.currentThread().isInterrupted();
     }
