@@ -1,10 +1,10 @@
-package com.t2m.flow.util;
+package com.t2m.stream.util;
 
 import android.util.Log;
 
 import java.lang.ref.WeakReference;
 
-public class Cache <T> {
+public class Cache<T> {
     private static final String TAG = Cache.class.getSimpleName();
 
     private static final boolean DEBUG_LEAK = false;
@@ -13,25 +13,19 @@ public class Cache <T> {
     private static final int CACHED_BUFF_SIZE = 10;
     private final Object[] mCachedBuffs = new Object[CACHED_BUFF_SIZE];
     private String mName;
-    private OnCreate<T> mOnCreate;
     private OnGet<T> mOnGet;
     private OnPut<T> mOnPut;
 
-    public interface OnCreate<T> {
-        T onCreate();
-    }
-
     public interface OnGet<T> {
-        void onGet(T data);
+        T onGet(T data);
     }
 
     public interface OnPut<T> {
         void onPut(T data);
     }
 
-    public Cache(String name, OnCreate<T> onCreate, OnGet<T> onGet, OnPut<T> onPut) {
+    public Cache(String name, OnGet<T> onGet, OnPut<T> onPut) {
         mName = name;
-        mOnCreate = onCreate;
         mOnGet = onGet;
         mOnPut = onPut;
     }
@@ -48,14 +42,9 @@ public class Cache <T> {
                 }
             }
 
-            // not cached, onCreate a new
-            if (data == null && mOnCreate != null) {
-                data = mOnCreate.onCreate();
-            }
-
             // on get
             if (mOnGet != null) {
-                mOnGet.onGet(data);
+                data = mOnGet.onGet(data);
             }
 
             // debug leak

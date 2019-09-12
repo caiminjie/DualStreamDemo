@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.flow.util;
+package com.t2m.stream.util;
 
 import android.media.AudioFormat;
 

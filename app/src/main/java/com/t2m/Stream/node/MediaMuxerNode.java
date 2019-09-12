@@ -1,29 +1,21 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.flow.nodes;
+package com.t2m.stream.node;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
-import com.t2m.flow.data.ByteBufferData;
-import com.t2m.flow.data.DataHolder;
-import com.t2m.flow.node.Node;
-import com.t2m.flow.path.Plug;
-import com.t2m.flow.path.Slot;
+import com.t2m.stream.data.MediaData;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.InvalidParameterException;
 
 /**
  * MediaMuxer Node for saving audio track
  */
-public class MediaMuxerNode extends Node {
+public class MediaMuxerNode extends ProcessNode<MediaData> {
     private static final String TAG = MediaMuxerNode.class.getSimpleName();
-
-    public static final int INDEX_AUDIO_WRITER = 0;
-    public static final int INDEX_VIDEO_WRITER = 1;
 
     private final Object mWriterLock = new Object();
 
@@ -38,29 +30,7 @@ public class MediaMuxerNode extends Node {
     private MediaFormat mAudioFormat;
     private MediaFormat mVideoFormat;
 
-    private Slot mSlotAudioWriter = new Slot() {
-        @Override
-        public int setData(DataHolder holder) {
-            return slotAudioWriterSetData(holder);
-        }
-
-        @Override
-        public boolean bypass() {
-            return false;
-        }
-    };
-
-    private Slot mSlotVideoWriter = new Slot() {
-        @Override
-        public int setData(DataHolder holder) {
-            return slotVideoWriterSetData(holder);
-        }
-
-        @Override
-        public boolean bypass() {
-            return false;
-        }
-    };
+    private boolean mMuxStarted = false;
 
     public MediaMuxerNode(String name, String path) {
         super(name);
@@ -68,24 +38,14 @@ public class MediaMuxerNode extends Node {
         mPath = path;
     }
 
-
     @Override
-    public Node open() throws IOException {
-        if (isOpened()) {
-            return this; // already opened
-        }
+    protected void onOpen() throws IOException {
         mMuxer = new MediaMuxer(mPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         mMuxer.setOrientationHint(90);
-        return this;
     }
 
     @Override
-    public boolean isOpened() {
-        return mMuxer != null;
-    }
-
-    @Override
-    public void close() throws IOException {
+    protected void onClose() throws IOException {
         mAudioTrackIndex = -1;
         mVideoTrackIndex = -1;
         mMuxStarted = false;
@@ -102,56 +62,29 @@ public class MediaMuxerNode extends Node {
         }
     }
 
-    @Deprecated
     @Override
-    public Plug plugReader(int index) {
-        throw new InvalidParameterException("[" + mName + "] method not supported");
-    }
-
-    @Deprecated
-    @Override
-    public Plug plugWriter(int index) {
-        throw new InvalidParameterException("[" + mName + "] method not supported");
-    }
-
-    @Deprecated
-    @Override
-    public Slot slotReader(int index) {
-        throw new InvalidParameterException("[" + mName + "] method not supported");
-    }
-
-    @Override
-    public Slot slotWriter(int index) {
-        switch (index) {
-            case INDEX_AUDIO_WRITER:
-                return mSlotAudioWriter;
-            case INDEX_VIDEO_WRITER:
-                return mSlotVideoWriter;
+    public int process(MediaData data) {
+        // do process
+        switch (data.type) {
+            case MediaData.TYPE_AUDIO:
+                return processAudioData(data);
+            case MediaData.TYPE_VIDEO:
+                return processVideoData(data);
             default:
-                Log.e(TAG, "[" + mName + "] Invalid slot writer index: " + index);
-                return null;
+                Log.e(TAG, "[" + mName + "] Invalid data type: " + data.type);
+                return RESULT_ERROR;
         }
     }
 
-    public Slot slotAudioWriter() {
-        return mSlotAudioWriter;
-    }
-
-    public Slot slotVideoWriter() {
-        return mSlotVideoWriter;
-    }
-
-    private boolean mMuxStarted = false;
-
-    private int slotAudioWriterSetData(DataHolder holder) {
+    private int processAudioData(MediaData data) {
+        Log.i(TAG, "processAudioData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 return RESULT_NOT_OPEN;
             }
 
-            ByteBufferData data = (ByteBufferData) holder.data;
             if (data.isConfig()) {
-                mAudioFormat = data.getConfigFormat();
+                mAudioFormat = data.format;
                 mAudioTrackIndex = mMuxer.addTrack(mAudioFormat);
                 mIsAudioConfigured = true;
 
@@ -163,10 +96,9 @@ public class MediaMuxerNode extends Node {
                 return RESULT_OK;
             } else {
                 if (mMuxStarted && mIsAudioConfigured && mIsVideoConfigured) {
-                    ByteBuffer buffer = data.getBuffer();
+                    ByteBuffer buffer = data.buffer;
                     assert buffer != null;
-                    MediaCodec.BufferInfo info = data.getBufferInfo();
-                    assert info != null;
+                    MediaCodec.BufferInfo info = data.info;
                     buffer.position(info.offset);
 
                     // write encoded data to muxer(need to adjust presentationTimeUs.
@@ -184,15 +116,15 @@ public class MediaMuxerNode extends Node {
         }
     }
 
-    private int slotVideoWriterSetData(DataHolder holder) {
+    private int processVideoData(MediaData data) {
+        Log.i(TAG, "processVideoData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 return RESULT_NOT_OPEN;
             }
 
-            ByteBufferData data = (ByteBufferData) holder.data;
             if (data.isConfig()) {
-                mVideoFormat = data.getConfigFormat();
+                mVideoFormat = data.format;
                 mVideoTrackIndex = mMuxer.addTrack(mVideoFormat);
                 mIsVideoConfigured = true;
 
@@ -204,10 +136,9 @@ public class MediaMuxerNode extends Node {
                 return RESULT_OK;
             } else {
                 if (mMuxStarted && mIsAudioConfigured && mIsVideoConfigured) {
-                    ByteBuffer buffer = data.getBuffer();
+                    ByteBuffer buffer = data.buffer;
                     assert buffer != null;
-                    MediaCodec.BufferInfo info = data.getBufferInfo();
-                    assert info != null;
+                    MediaCodec.BufferInfo info = data.info;
                     buffer.position(info.offset);
 
                     // write encoded data to muxer(need to adjust presentationTimeUs.

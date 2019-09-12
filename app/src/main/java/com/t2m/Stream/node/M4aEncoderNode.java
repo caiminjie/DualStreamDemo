@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.flow.nodes;
+package com.t2m.stream.node;
 
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
