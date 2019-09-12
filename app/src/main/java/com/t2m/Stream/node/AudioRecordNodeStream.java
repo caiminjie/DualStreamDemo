@@ -118,13 +118,16 @@ public class AudioRecordNodeStream extends Node {
                 return RESULT_EOS;
             }
 
-            Buffer buffer;
-            while ((buffer = dequeue()) == null) {
+            Buffer buffer = null;
+            while (!Thread.currentThread().isInterrupted() && (buffer = dequeue()) == null) {
                 // fetch more
                 int result = fetchMore(this);
                 if (result != RESULT_OK) {
                     return result;
                 }
+            }
+            if (buffer == null) {
+                return RESULT_ERROR;
             }
 
             // copy to data

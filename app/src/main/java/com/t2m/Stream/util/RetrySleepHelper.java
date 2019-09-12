@@ -5,7 +5,7 @@ import android.util.Log;
 public class RetrySleepHelper {
     private static final String TAG = RetrySleepHelper.class.getSimpleName();
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private static final int DEF_MIN_RETRY_THRESHOLD = 1;
     private static final int DEF_MAX_RETRY_THRESHOLD = 3;

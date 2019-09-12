@@ -56,9 +56,6 @@ public abstract class Pipeline <T extends Data> {
                 int result = Node.RESULT_OK;
 
                 while (!Thread.currentThread().isInterrupted() && result == Node.RESULT_OK) {
-                    if (mName.equals("videoEncoder#InPipeline.Surface")) {
-                        Log.d(TAG, "[" + mName + "] pipeline loop begin. interrupted: " + Thread.currentThread().isInterrupted());
-                    }
                     // get data
                     T data = mCache.get();
 
@@ -79,10 +76,6 @@ public abstract class Pipeline <T extends Data> {
                             node.retryEnd();
                         }
 
-                        if (mName.equals("videoEncoder#InPipeline.Surface")) {
-                            Log.d(TAG, "[" + mName + "] pipeline outgoing finished");
-                        }
-
                         // process data with incoming node
                         for (ProcessNode<T> node : mIncomingList) {
                             node.retryBegin();
@@ -91,10 +84,6 @@ public abstract class Pipeline <T extends Data> {
                             }
                             node.retryEnd();
                         }
-
-                        if (mName.equals("videoEncoder#InPipeline.Surface")) {
-                            Log.d(TAG, "[" + mName + "] pipeline incoming finished");
-                        }
                     }
 
                     // release data
@@ -102,10 +91,6 @@ public abstract class Pipeline <T extends Data> {
 
                     // recycle to cache
                     mCache.put(data);
-
-                    if (mName.equals("videoEncoder#InPipeline.Surface")) {
-                        Log.d(TAG, "[" + mName + "] pipeline loop end");
-                    }
                 }
 
                 Log.d(TAG, "[" + mName + "] pipeline end");

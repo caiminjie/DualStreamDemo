@@ -61,6 +61,7 @@ public class CodecNode extends PipelineNode<Data> {
             @Override
             protected void onReleaseData(SurfaceData data) {
                 CodecNode.this.releaseInputDataSurface(data);
+                stop();
             }
         };
         mInPipeline = new Pipeline<MediaData>(mName + "#InPipeline") {

@@ -287,6 +287,7 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
 
         mSurfaces.clear();
         mPendingOpen = false;
+        mCaptureTemplate = CameraDevice.TEMPLATE_PREVIEW;
 
         synchronized (mBlockProcess) {
             mBlockProcess.notifyAll();
@@ -320,6 +321,7 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
                     mBlockProcess.wait();
                 } catch (InterruptedException e) {
                     Log.w(TAG, "[" + mName + "] block pipeline interrupted.", e);
+                    Thread.currentThread().interrupt();
                 }
             }
         }
@@ -346,7 +348,6 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
     }
 
     private void onSessionConfigured(CameraCaptureSession session) {
-        Log.w("==MyTest==", "onSessionConfigured()# begin");
         mCurrentSession = session;
 
         try {
@@ -363,7 +364,6 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
             Log.e(TAG, "create capture request failed.", e);
             mEventHandler.sendEmptyMessage(MSG_QUIT);
         }
-        Log.w("==MyTest==", "onSessionConfigured()# end");
     }
 
     private void onSessionConfigureFailed(CameraCaptureSession session) {

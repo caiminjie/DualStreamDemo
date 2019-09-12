@@ -196,12 +196,9 @@ public class AudioNode extends ProcessNode<MediaData> {
 
     @Override
     public int process(MediaData data) {
-        //Log.d(TAG, "process() begin"); // TODO remove later
         if (mStatus == STATUS_NOT_OPENED) {
-            //Log.d(TAG, "process() end 2"); // TODO remove later
             return RESULT_RETRY;
         } else if (mStatus == STATUS_CLOSED || mStatus == STATUS_CLOSING) {
-            //Log.d(TAG, "process() end 3"); // TODO remove later
             return RESULT_EOS;
         }
 
@@ -232,13 +229,11 @@ public class AudioNode extends ProcessNode<MediaData> {
         // release buffer
         buffer.release();
 
-        //Log.d(TAG, "process() end"); // TODO remove later
         return RESULT_OK;
     }
 
     private int fetchMore(Queue queue) {
         synchronized (mFetchLock) {
-            //Log.d(TAG, "fetchMore() begin"); // TODO remove later
             if (!queue.shouldFetch()) {
                 return RESULT_OK;  // already fetched by other node
             }
@@ -250,12 +245,10 @@ public class AudioNode extends ProcessNode<MediaData> {
             buffer.len = mAudioRecord.read(buffer.buffer, 0, buffer.buffer.length);
             if (buffer.len == 0) {
                 mCache.put(buffer);
-                //Log.d(TAG, "fetchMore() end 2"); // TODO remove later
                 return RESULT_RETRY;
             } else if (buffer.len < 0) {
                 Log.e(TAG, "Fetch error: " + buffer.len);
                 mCache.put(buffer);
-                //Log.d(TAG, "fetchMore() end 3"); // TODO remove later
                 return RESULT_ERROR;
             } else {
                 // fill info
@@ -277,7 +270,6 @@ public class AudioNode extends ProcessNode<MediaData> {
                 // dispatch buffer to all nodes
                 dispatchStreamData(buffer);
 
-                //Log.d(TAG, "fetchMore() end"); // TODO remove later
                 return RESULT_OK;
             }
         }

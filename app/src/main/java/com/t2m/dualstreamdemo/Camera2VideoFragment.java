@@ -48,16 +48,14 @@ import android.widget.Button;
 import com.t2m.stream.Task;
 import com.t2m.stream.data.SurfaceData;
 import com.t2m.stream.node.AudioNode;
-import com.t2m.stream.node.AudioRecordNode;
-import com.t2m.stream.node.AudioRecordNodeStream;
 import com.t2m.stream.node.CameraRecordNode;
 import com.t2m.stream.node.H264EncoderNode;
+import com.t2m.stream.node.H265EncoderNode;
 import com.t2m.stream.node.M4aEncoderNode;
 import com.t2m.stream.node.MediaMuxerNode;
 import com.t2m.stream.node.SurfaceNode;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -109,9 +107,10 @@ public class Camera2VideoFragment extends Fragment
      */
     private Button mButtonVideo;
 
-    private Task mRecordTask;
+    private Task mCurrentTask;
     private Size mPreviewSize;
     private Size mVideoSize;
+    private Size mVideoSize2;
     private CameraRecordNode mCameraNode;
 
     private CameraRecordNode.OnCameraOpenedListener mCameraOpenedListener = () -> {
@@ -120,6 +119,7 @@ public class Camera2VideoFragment extends Fragment
 //        }
 
         mVideoSize = chooseVideoSize(mCameraNode.getAvailableCodecSize());
+        mVideoSize2 = chooseVideoSize2(mCameraNode.getAvailableCodecSize());
         mPreviewSize = chooseOptimalSize(mCameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize);
 
         mTextureView.post(() -> {
@@ -175,9 +175,7 @@ public class Camera2VideoFragment extends Fragment
             return;
         }
 
-        if (mCameraNode != null) {
-            closeCamera();
-        }
+        closeCamera();
 
         mCameraNode = new CameraRecordNode("Camera", getContext());
         mCameraNode.setCameraId(mCameraNode.getCameraIdList()[0]);
@@ -205,6 +203,16 @@ public class Camera2VideoFragment extends Fragment
     private static Size chooseVideoSize(Size[] choices) {
         for (Size size : choices) {
             if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
+                return size;
+            }
+        }
+        Log.e(TAG, "Couldn't find any suitable video size");
+        return choices[choices.length - 1];
+    }
+
+    private static Size chooseVideoSize2(Size[] choices) {
+        for (Size size : choices) {
+            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 360) {
                 return size;
             }
         }
@@ -252,7 +260,6 @@ public class Camera2VideoFragment extends Fragment
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
-        Log.i("==MyTest==", "onViewCreated()# begin");
         mTextureView = view.findViewById(R.id.texture);
         view.findViewById(R.id.video).setOnClickListener(v -> {
             if (mStatus == STATUS_RECORDING) {
@@ -270,27 +277,22 @@ public class Camera2VideoFragment extends Fragment
                         .show();
             }
         });
-        Log.i("==MyTest==", "onViewCreated()# end");
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        Log.i("==MyTest==", "onResume()# begin");
         if (mTextureView.isAvailable()) {
             openCamera();
         } else {
             mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
-        Log.i("==MyTest==", "onResume()# end");
     }
 
     @Override
     public void onPause() {
-        Log.i("==MyTest==", "onPause()# begin");
         closeCamera();
         super.onPause();
-        Log.i("==MyTest==", "onPause()# end");
     }
 
     /**
@@ -361,20 +363,17 @@ public class Camera2VideoFragment extends Fragment
      * Start the camera preview.
      */
     private void startPreview() {
-        Log.i("==MyTest==", "startPreview()# begin");
         if (mStatus == STATUS_PREVIEW) {
-            Log.i("==MyTest==", "startPreview()# end 2");
             return;
         }
 
         if (mStatus == STATUS_RECORDING) {
-            mRecordTask.stop();
-            mRecordTask.waitForFinish();
+            mCurrentTask.stop();
+            mCurrentTask.waitForFinish();
             mStatus = STATUS_IDLE;
         }
 
         if (!mTextureView.isAvailable() || null == mPreviewSize) {
-            Log.i("==MyTest==", "startPreview()# end 3. available: " + mTextureView.isAvailable() + ", size: " + mPreviewSize);
             return;
         }
 
@@ -390,34 +389,30 @@ public class Camera2VideoFragment extends Fragment
         SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
 
         // config pipeline
-        previewNode.pipeline().addOutgoingNode(mCameraNode);
+        previewNode.pipeline().addIncomingNode(mCameraNode);
 
         // create task
-        mRecordTask = new Task("Preview Task");
-        mRecordTask
+        mCurrentTask = new Task("Preview Task");
+        mCurrentTask
                 .addNode(mCameraNode)
                 .addNode(previewNode);
-        mRecordTask.start();
+        mCurrentTask.start();
 
         mStatus = STATUS_PREVIEW;
-        Log.i("==MyTest==", "startPreview()# end");
     }
 
     private void startRecordingVideo() {
-        Log.i("==MyTest==", "startRecordingVideo()# begin");
         if (mStatus == STATUS_RECORDING) {
-            Log.i("==MyTest==", "startRecordingVideo()# end 2");
             return;
         }
 
         if (mStatus == STATUS_PREVIEW) {
-            mRecordTask.stop();
-            mRecordTask.waitForFinish();
+            mCurrentTask.stop();
+            mCurrentTask.waitForFinish();
             mStatus = STATUS_IDLE;
         }
 
         if (!mTextureView.isAvailable() || null == mPreviewSize) {
-            Log.i("==MyTest==", "startRecordingVideo()# end 3");
             return;
         }
 
@@ -433,24 +428,14 @@ public class Camera2VideoFragment extends Fragment
         AudioNode audioNode = new AudioNode("audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
         SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
         H264EncoderNode videoEncoderNode1 = new H264EncoderNode("videoEncoder1", mVideoSize.getWidth(), mVideoSize.getHeight(), 10000000, 30);
-        try {
-            videoEncoderNode1.open();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         M4aEncoderNode audioEncoderNode1 = new M4aEncoderNode("audioEncoder1");
-        H264EncoderNode videoEncoderNode2 = new H264EncoderNode("videoEncoder2", mVideoSize.getWidth(), mVideoSize.getHeight(), 10000000, 30);
-        try {
-            videoEncoderNode1.open();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        H264EncoderNode videoEncoderNode2 = new H264EncoderNode("videoEncoder2", mVideoSize2.getWidth(), mVideoSize2.getHeight(), 1000000, 30);
         M4aEncoderNode audioEncoderNode2 = new M4aEncoderNode("audioEncoder2");
-        MediaMuxerNode muxerNode1 = new MediaMuxerNode("MuxerNode", "/sdcard/DCIM/a.mp4");
-        MediaMuxerNode muxerNode2 = new MediaMuxerNode("MuxerNode", "/sdcard/DCIM/b.mp4");
+        MediaMuxerNode muxerNode1 = new MediaMuxerNode("MuxerNode1", "/sdcard/DCIM/a.mp4");
+        MediaMuxerNode muxerNode2 = new MediaMuxerNode("MuxerNode2", "/sdcard/DCIM/b.mp4");
 
         // config pipeline
-        previewNode.pipeline().addOutgoingNode(mCameraNode);
+        previewNode.pipeline().addIncomingNode(mCameraNode);
         videoEncoderNode1.inputPipelineSurface().addIncomingNode(mCameraNode);
         videoEncoderNode1.outputPipeline().addOutgoingNode(muxerNode1);
         audioEncoderNode1.inputPipeline().addIncomingNode(audioNode);
@@ -461,8 +446,8 @@ public class Camera2VideoFragment extends Fragment
         audioEncoderNode2.outputPipeline().addOutgoingNode(muxerNode2);
 
         // create task
-        mRecordTask = new Task("Record Task");
-        mRecordTask
+        mCurrentTask = new Task("Record Task");
+        mCurrentTask
                 .addNode(mCameraNode)
                 .addNode(previewNode)
                 .addNode(muxerNode1)
@@ -473,10 +458,9 @@ public class Camera2VideoFragment extends Fragment
                 .addNode(audioNode)
                 .addNode(videoEncoderNode2)
                 .addNode(audioEncoderNode2);
-        mRecordTask.start();
+        mCurrentTask.start();
 
         mStatus = STATUS_RECORDING;
-        Log.i("==MyTest==", "startRecordingVideo()# end");
     }
 
     /**
