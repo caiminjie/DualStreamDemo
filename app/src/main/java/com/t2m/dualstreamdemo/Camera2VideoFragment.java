@@ -44,6 +44,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 
 import com.t2m.stream.Task;
 import com.t2m.stream.data.SurfaceData;
@@ -263,8 +264,10 @@ public class Camera2VideoFragment extends Fragment
         mTextureView = view.findViewById(R.id.texture);
         view.findViewById(R.id.video).setOnClickListener(v -> {
             if (mStatus == STATUS_RECORDING) {
+                ((TextView) v).setText(R.string.record);
                 startPreview();
             } else {
+                ((TextView) v).setText(R.string.stop);
                 startRecordingVideo();
             }
         });
