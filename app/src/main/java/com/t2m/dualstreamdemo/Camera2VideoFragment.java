@@ -61,12 +61,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Camera2VideoFragment extends Fragment
         implements FragmentCompat.OnRequestPermissionsResultCallback {
 
-    private static final int SENSOR_ORIENTATION_DEFAULT_DEGREES = 90;
-    private static final int SENSOR_ORIENTATION_INVERSE_DEGREES = 270;
     private static final SparseIntArray DEFAULT_ORIENTATIONS = new SparseIntArray();
     private static final SparseIntArray INVERSE_ORIENTATIONS = new SparseIntArray();
 
@@ -103,33 +103,36 @@ public class Camera2VideoFragment extends Fragment
      */
     private AutoFitTextureView mTextureView;
 
-    /**
-     * Button to record video
-     */
-    private Button mButtonVideo;
-
     private Task mCurrentTask;
     private Size mPreviewSize;
-    private Size mVideoSize;
+    private Size mVideoSize1;
     private Size mVideoSize2;
     private CameraRecordNode mCameraNode;
 
     private CameraRecordNode.OnCameraOpenedListener mCameraOpenedListener = () -> {
-//        if (null != mTextureView) {
-//            configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
-//        }
+        mVideoSize1 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 1080);
+        //mVideoSize1 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 720);
+        mVideoSize2 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 720);
+        mPreviewSize = chooseOptimalSize(mCameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize1);
 
-        mVideoSize = chooseVideoSize(mCameraNode.getAvailableCodecSize());
-        mVideoSize2 = chooseVideoSize2(mCameraNode.getAvailableCodecSize());
-        mPreviewSize = chooseOptimalSize(mCameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize);
+        Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
 
         mTextureView.post(() -> {
             int orientation = getResources().getConfiguration().orientation;
-            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            int sensorOrientation = mCameraNode.getSensorOrientation();
+            boolean sensorLandscape = sensorOrientation == 0 || sensorOrientation == 180;
+            boolean deviceLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
+
+            if (deviceLandscape ^ sensorLandscape) {
                 mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
             } else {
                 mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
             }
+//            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+//                mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+//            } else {
+//                mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
+//            }
             configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
         });
 
@@ -201,20 +204,19 @@ public class Camera2VideoFragment extends Fragment
      * @param choices The list of available sizes
      * @return The video size
      */
-    private static Size chooseVideoSize(Size[] choices) {
-        for (Size size : choices) {
-            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
-                return size;
-            }
-        }
-        Log.e(TAG, "Couldn't find any suitable video size");
-        return choices[choices.length - 1];
-    }
+    private static Size chooseVideoSize(Size[] choices, int ratioWidth, int ratioHeight, int minWidth) {
+        List<Size> c = Stream.of(choices).map((item) -> (item.getWidth() > item.getHeight()) ? new Size(item.getHeight(), item.getWidth()) : item).collect(Collectors.toList());
 
-    private static Size chooseVideoSize2(Size[] choices) {
-        for (Size size : choices) {
-            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 360) {
-                return size;
+        if (ratioWidth > ratioHeight) {
+            int temp = ratioWidth;
+            ratioWidth = ratioHeight;
+            ratioHeight = temp;
+        }
+
+        for (int i=0; i<choices.length; i++) {
+            Size size = c.get(i);
+            if (size.getWidth() * ratioHeight == size.getHeight() * ratioWidth  && size.getWidth() <= minWidth) {
+                return choices[i];
             }
         }
         Log.e(TAG, "Couldn't find any suitable video size");
@@ -392,7 +394,7 @@ public class Camera2VideoFragment extends Fragment
         SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
 
         // config pipeline
-        previewNode.pipeline().addIncomingNode(mCameraNode);
+        previewNode.pipeline().addNode(mCameraNode);
 
         // create task
         mCurrentTask = new Task("Preview Task");
@@ -404,6 +406,9 @@ public class Camera2VideoFragment extends Fragment
         mStatus = STATUS_PREVIEW;
     }
 
+    /**
+     * Start video recording
+     */
     private void startRecordingVideo() {
         if (mStatus == STATUS_RECORDING) {
             return;
@@ -424,43 +429,45 @@ public class Camera2VideoFragment extends Fragment
         texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
         Surface previewSurface = new Surface(texture);
 
-        // set stream count
-        mCameraNode.setStreamCount(3);
-
-        // create node
+        // init audio & camera
         AudioNode audioNode = new AudioNode("audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
-        SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
-        H264EncoderNode videoEncoderNode1 = new H264EncoderNode("videoEncoder1", mVideoSize.getWidth(), mVideoSize.getHeight(), 10000000, 30);
-        M4aEncoderNode audioEncoderNode1 = new M4aEncoderNode("audioEncoder1");
-        H264EncoderNode videoEncoderNode2 = new H264EncoderNode("videoEncoder2", mVideoSize2.getWidth(), mVideoSize2.getHeight(), 1000000, 30);
-        M4aEncoderNode audioEncoderNode2 = new M4aEncoderNode("audioEncoder2");
-        MediaMuxerNode muxerNode1 = new MediaMuxerNode("MuxerNode1", "/sdcard/DCIM/a.mp4");
-        MediaMuxerNode muxerNode2 = new MediaMuxerNode("MuxerNode2", "/sdcard/DCIM/b.mp4");
+        mCameraNode.setStreamCount(2);
 
-        // config pipeline
-        previewNode.pipeline().addIncomingNode(mCameraNode);
-        videoEncoderNode1.inputPipelineSurface().addIncomingNode(mCameraNode);
-        videoEncoderNode1.outputPipeline().addOutgoingNode(muxerNode1);
-        audioEncoderNode1.inputPipeline().addIncomingNode(audioNode);
-        audioEncoderNode1.outputPipeline().addOutgoingNode(muxerNode1);
-        videoEncoderNode2.inputPipelineSurface().addIncomingNode(mCameraNode);
-        videoEncoderNode2.outputPipeline().addOutgoingNode(muxerNode2);
-        audioEncoderNode2.inputPipeline().addIncomingNode(audioNode);
-        audioEncoderNode2.outputPipeline().addOutgoingNode(muxerNode2);
+        // stream preview
+        SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
+        previewNode.pipeline().addNode(mCameraNode);
+
+        // stream 1
+        H264EncoderNode videoEncoderNode1 = new H264EncoderNode("videoEncoder1", mVideoSize1.getWidth(), mVideoSize1.getHeight(), 10000000, 30);
+        M4aEncoderNode audioEncoderNode1 = new M4aEncoderNode("audioEncoder1");
+        MediaMuxerNode muxerNode1 = new MediaMuxerNode("MuxerNode1", "/sdcard/DCIM/a.mp4", mCameraNode.getSensorOrientation());
+        videoEncoderNode1.inputPipelineSurface().addNode(mCameraNode);
+        videoEncoderNode1.outputPipeline().addNode(muxerNode1);
+        audioEncoderNode1.inputPipeline().addNode(audioNode);
+        audioEncoderNode1.outputPipeline().addNode(muxerNode1);
+
+        // stream 2
+        H264EncoderNode videoEncoderNode2 = new H264EncoderNode("videoEncoder2", mVideoSize2.getWidth(), mVideoSize2.getHeight(), 5000000, 30);
+        M4aEncoderNode audioEncoderNode2 = new M4aEncoderNode("audioEncoder2");
+        MediaMuxerNode muxerNode2 = new MediaMuxerNode("MuxerNode2", "/sdcard/DCIM/b.mp4", mCameraNode.getSensorOrientation());
+        videoEncoderNode2.inputPipelineSurface().addNode(mCameraNode);
+        videoEncoderNode2.outputPipeline().addNode(muxerNode2);
+        audioEncoderNode2.inputPipeline().addNode(audioNode);
+        audioEncoderNode2.outputPipeline().addNode(muxerNode2);
 
         // create task
         mCurrentTask = new Task("Record Task");
         mCurrentTask
                 .addNode(mCameraNode)
-                .addNode(previewNode)
-                .addNode(muxerNode1)
                 .addNode(audioNode)
+                .addNode(previewNode)
                 .addNode(videoEncoderNode1)
                 .addNode(audioEncoderNode1)
-                .addNode(muxerNode2)
-                .addNode(audioNode)
+                .addNode(muxerNode1)
                 .addNode(videoEncoderNode2)
-                .addNode(audioEncoderNode2);
+                .addNode(audioEncoderNode2)
+                .addNode(muxerNode2)
+        ;
         mCurrentTask.start();
 
         mStatus = STATUS_RECORDING;
@@ -546,20 +553,10 @@ public class Camera2VideoFragment extends Fragment
             final Fragment parent = getParentFragment();
             return new AlertDialog.Builder(getActivity())
                     .setMessage(R.string.permission_request)
-                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            FragmentCompat.requestPermissions(parent, VIDEO_PERMISSIONS,
-                                    REQUEST_VIDEO_PERMISSIONS);
-                        }
-                    })
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> FragmentCompat.requestPermissions(parent, VIDEO_PERMISSIONS,
+                            REQUEST_VIDEO_PERMISSIONS))
                     .setNegativeButton(android.R.string.cancel,
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    parent.getActivity().finish();
-                                }
-                            })
+                            (dialog, which) -> parent.getActivity().finish())
                     .create();
         }
 

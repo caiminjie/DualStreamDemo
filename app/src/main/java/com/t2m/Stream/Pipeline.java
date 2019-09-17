@@ -6,14 +6,10 @@ import com.t2m.stream.node.ProcessNode;
 import com.t2m.stream.util.Cache;
 import com.t2m.stream.util.RetrySleepHelper;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public abstract class Pipeline <T extends Data> {
     private static final String TAG = Pipeline.class.getSimpleName();
-
-    private final List<ProcessNode<T>> mOutgoingList = new ArrayList<>();
-    private final List<ProcessNode<T>> mIncomingList = new ArrayList<>();
 
     private String mName;
     private Thread mThread = null;
@@ -68,16 +64,7 @@ public abstract class Pipeline <T extends Data> {
 
                     if (result == Node.RESULT_OK) {
                         // process data with outgoing node
-                        for (ProcessNode<T> node : mOutgoingList) {
-                            node.retryBegin();
-                            while ((result = node.process(data)) == Node.RESULT_RETRY) {
-                                node.retrySleep();
-                            }
-                            node.retryEnd();
-                        }
-
-                        // process data with incoming node
-                        for (ProcessNode<T> node : mIncomingList) {
+                        for (ProcessNode<T> node : getNodeList()) {
                             node.retryBegin();
                             while ((result = node.process(data)) == Node.RESULT_RETRY) {
                                 node.retrySleep();
@@ -123,17 +110,9 @@ public abstract class Pipeline <T extends Data> {
         }
     }
 
-    public Pipeline addOutgoingNode(ProcessNode<T> node) {
-        synchronized (mOutgoingList) {
-            mOutgoingList.add(node);
-            return this;
-        }
-    }
-    public Pipeline addIncomingNode(ProcessNode<T> node) {
-        synchronized (mIncomingList) {
-            mIncomingList.add(node);
-            return this;
-        }
+    public Pipeline<T> addNode(ProcessNode<T> node) {
+        onAddNode(node);
+        return this;
     }
 
     public void waitForFinish() {
@@ -144,6 +123,8 @@ public abstract class Pipeline <T extends Data> {
         }
     }
 
+    protected abstract List<ProcessNode<T>> getNodeList();
+    protected abstract void onAddNode(ProcessNode<T> node);
     protected abstract T onCreateData();
     protected abstract int onBindData(T data);
     protected abstract void onReleaseData(T data);

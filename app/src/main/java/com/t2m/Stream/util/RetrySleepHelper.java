@@ -5,10 +5,10 @@ import android.util.Log;
 public class RetrySleepHelper {
     private static final String TAG = RetrySleepHelper.class.getSimpleName();
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
-    private static final int DEF_MIN_RETRY_THRESHOLD = 1;
-    private static final int DEF_MAX_RETRY_THRESHOLD = 3;
+    private static final int DEF_MIN_RETRY_THRESHOLD = 0;
+    private static final int DEF_MAX_RETRY_THRESHOLD = 2;
     private static final int DEF_SLEEP_STEP = 1;
 
     private String mName; // initialized by constructor
@@ -66,12 +66,12 @@ public class RetrySleepHelper {
     }
 
     public void end() {
-        if (mRetryCount > mMaxThreshold) {
+        if (mRetryCount >= mMaxThreshold) {
             mSleepTime += mSleepStep;
             if (DEBUG) {
                 Log.d(TAG, "[" + mName + "] mSleepTime update# mRetryCount: " + mRetryCount + ", mSleepTime: " + mSleepTime);
             }
-        } else if (mRetryCount < mMinThreshold && mSleepTime > 0) {
+        } else if (mRetryCount <= mMinThreshold && mSleepTime > 0) {
             mSleepTime -= mSleepStep;
             if (DEBUG) {
                 Log.d(TAG, "[" + mName + "] mSleepTime update# mRetryCount: " + mRetryCount + ", mSleepTime: " + mSleepTime);

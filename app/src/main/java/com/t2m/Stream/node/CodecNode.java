@@ -10,6 +10,7 @@ import com.t2m.stream.Data;
 import com.t2m.stream.Pipeline;
 import com.t2m.stream.data.MediaData;
 import com.t2m.stream.data.SurfaceData;
+import com.t2m.stream.pipeline.SimplePipeline;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
@@ -26,9 +27,9 @@ public class CodecNode extends PipelineNode<Data> {
     private MediaFormat mFormat;
     private Surface mSurface;
 
-    private Pipeline<SurfaceData> mInPipelineSurface;
-    private Pipeline<MediaData> mInPipeline;
-    private Pipeline<MediaData> mOutPipeline;
+    private SimplePipeline<SurfaceData> mInPipelineSurface;
+    private SimplePipeline<MediaData> mInPipeline;
+    private SimplePipeline<MediaData> mOutPipeline;
 
     public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
         super(name);
@@ -47,7 +48,7 @@ public class CodecNode extends PipelineNode<Data> {
         }
 
         // create input pipeline
-        mInPipelineSurface = new Pipeline<SurfaceData>(mName + "#InPipeline.Surface") {
+        mInPipelineSurface = new SimplePipeline<SurfaceData>(mName + "#InPipeline.Surface") {
             @Override
             protected SurfaceData onCreateData() {
                 return new SurfaceData();
@@ -64,7 +65,7 @@ public class CodecNode extends PipelineNode<Data> {
                 stop();
             }
         };
-        mInPipeline = new Pipeline<MediaData>(mName + "#InPipeline") {
+        mInPipeline = new SimplePipeline<MediaData>(mName + "#InPipeline") {
             private int id = hashCode();
 
             @Override
@@ -84,7 +85,7 @@ public class CodecNode extends PipelineNode<Data> {
         };
 
         // create output pipeline
-        mOutPipeline = new Pipeline<MediaData>(mName + "#OutPipeline") {
+        mOutPipeline = new SimplePipeline<MediaData>(mName + "#OutPipeline") {
             private int id = hashCode();
 
             @Override

@@ -101,6 +101,17 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
         mCameraId = id;
     }
 
+    public int getSensorOrientation() {
+        try {
+            Integer i = mCameraManager.getCameraCharacteristics(mCameraId)
+                    .get(CameraCharacteristics.SENSOR_ORIENTATION);
+            return i == null ? 90 : i;
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "getSensorOrientation() failed.", e);
+            return 90;
+        }
+    }
+
     public String[] getCameraIdList() {
         try {
             return mCameraManager.getCameraIdList();
@@ -276,9 +287,11 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
     @Override
     protected void onClose() throws IOException {
         try {
-            mCurrentSession.stopRepeating();
-            mCurrentSession = null;
-            mCurrentRequest = null;
+            if (mCurrentSession != null) {
+                mCurrentSession.stopRepeating();
+                mCurrentSession = null;
+                mCurrentRequest = null;
+            }
         } catch (CameraAccessException e) {
             Log.e(TAG, "close failed", e);
         } catch (IllegalStateException e) {

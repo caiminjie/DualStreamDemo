@@ -21,6 +21,7 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
 
     private MediaMuxer mMuxer = null;
     private String mPath;
+    private int mOrientation;
 
     private int mAudioTrackIndex = -1;
     private int mVideoTrackIndex = -1;
@@ -32,16 +33,17 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
 
     private boolean mMuxStarted = false;
 
-    public MediaMuxerNode(String name, String path) {
+    public MediaMuxerNode(String name, String path, int orientation) {
         super(name);
 
         mPath = path;
+        mOrientation = orientation;
     }
 
     @Override
     protected void onOpen() throws IOException {
         mMuxer = new MediaMuxer(mPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-        mMuxer.setOrientationHint(90);
+        mMuxer.setOrientationHint(mOrientation);
     }
 
     @Override
@@ -77,7 +79,7 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
     }
 
     private int processAudioData(MediaData data) {
-        Log.i(TAG, "processAudioData()");
+        //Log.i(TAG, "processAudioData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 return RESULT_NOT_OPEN;
@@ -117,7 +119,7 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
     }
 
     private int processVideoData(MediaData data) {
-        Log.i(TAG, "processVideoData()");
+        //Log.i(TAG, "processVideoData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 return RESULT_NOT_OPEN;

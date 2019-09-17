@@ -6,6 +6,7 @@ import android.view.Surface;
 import com.t2m.stream.Node;
 import com.t2m.stream.Pipeline;
 import com.t2m.stream.data.SurfaceData;
+import com.t2m.stream.pipeline.SimplePipeline;
 
 import java.io.IOException;
 
@@ -22,7 +23,7 @@ public class SurfaceNode extends PipelineNode<SurfaceData> {
 
         mType = type;
         mSurface = surface;
-        mPipeline = new Pipeline<SurfaceData>(mName + "#pipeline") {
+        mPipeline = new SimplePipeline<SurfaceData>(mName + "#pipeline") {
             @Override
             protected SurfaceData onCreateData() {
                 return new SurfaceData();
