@@ -5,15 +5,12 @@ import android.media.MediaCodec;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.t2m.stream.Node;
 import com.t2m.stream.data.MediaData;
 import com.t2m.stream.util.Cache;
 import com.t2m.stream.util.Utils;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
 
 public class AudioNode extends ProcessNode<MediaData> {
     private final String TAG = com.t2m.stream.node.AudioNode.class.getSimpleName() + "#" + this.hashCode();
@@ -93,8 +90,10 @@ public class AudioNode extends ProcessNode<MediaData> {
             synchronized (this) {
                 ref --;
 
-                if (ref <= 0) {
+                if (ref == 0) {
                     mCache.put(this);
+                } else if (ref < 0) {
+                    Log.w(TAG, "release buffer [" + this.hashCode() + "] when ref is 0");
                 }
             }
         }
@@ -141,6 +140,7 @@ public class AudioNode extends ProcessNode<MediaData> {
 
     private void dispatchStreamData(Buffer buffer) {
         synchronized (mStreamLock) {
+            buffer.ref = mStreamQueues.size();
             for (int i=0; i<mStreamQueues.size(); i++) {
                 mStreamQueues.valueAt(i).enqueue(buffer);
             }

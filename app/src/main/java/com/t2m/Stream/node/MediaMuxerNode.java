@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.t2m.stream.data.MediaData;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -42,6 +43,11 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
 
     @Override
     protected void onOpen() throws IOException {
+        File file = new File(mPath);
+        if (file.exists()) {
+            file.deleteOnExit();
+        }
+
         mMuxer = new MediaMuxer(mPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         mMuxer.setOrientationHint(mOrientation);
     }

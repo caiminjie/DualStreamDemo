@@ -36,6 +36,7 @@ import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.LayoutInflater;
@@ -43,7 +44,6 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import com.t2m.stream.Task;
@@ -111,9 +111,9 @@ public class Camera2VideoFragment extends Fragment
 
     private CameraRecordNode.OnCameraOpenedListener mCameraOpenedListener = () -> {
         mVideoSize1 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 1080);
-        //mVideoSize1 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 720);
         mVideoSize2 = chooseVideoSize(mCameraNode.getAvailableCodecSize(), 16, 9, 720);
         mPreviewSize = chooseOptimalSize(mCameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize1);
+        mCameraNode.setFps(chooseFps(mCameraNode.getAvailableFps(), 30, 30));
 
         Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
 
@@ -195,6 +195,17 @@ public class Camera2VideoFragment extends Fragment
 
     public static Camera2VideoFragment newInstance() {
         return new Camera2VideoFragment();
+    }
+
+    private static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) {
+        if (choices != null) {
+            for (Range<Integer> range : choices) {
+                if (range.getLower() >= lower && range.getUpper() <= upper) {
+                    return range;
+                }
+            }
+        }
+        return new Range<>(lower, upper);
     }
 
     /**

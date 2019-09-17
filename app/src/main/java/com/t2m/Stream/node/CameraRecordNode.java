@@ -18,6 +18,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 
@@ -42,6 +43,8 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
     private CameraManager mCameraManager;
     private String mCameraId = null;
     private boolean mIsCameraOpened = false;
+
+    private Range<Integer> mFps;
 
     private CameraDevice mCameraDevice = null;
     private CameraCaptureSession mCurrentSession = null;
@@ -123,8 +126,7 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
 
     public Size[] getAvailableSize(Class<?> clazz) {
         try {
-            CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(mCameraId);
-            StreamConfigurationMap map = characteristics
+            StreamConfigurationMap map = mCameraManager.getCameraCharacteristics(mCameraId)
                     .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             if (map != null) {
                 return map.getOutputSizes(clazz);
@@ -153,6 +155,20 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
         synchronized (mStreamCountLock) {
             Log.i(TAG, "[" + mName + "] setStreamCount()# " + count);
             mStreamCount = count;
+        }
+    }
+
+    public void setFps(Range<Integer> fps) {
+        mFps = fps;
+    }
+
+    public Range<Integer>[] getAvailableFps() {
+        try {
+            return mCameraManager.getCameraCharacteristics(mCameraId)
+                    .get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "getAvailableFps() failed.", e);
+            return null;
         }
     }
 
@@ -371,6 +387,7 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
                 }
             }
             builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, mFps);
             mCurrentRequest = builder.build();
             mCurrentSession.setRepeatingRequest(mCurrentRequest, null, mCameraHandler);
         } catch (CameraAccessException e) {
