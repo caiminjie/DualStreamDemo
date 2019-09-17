@@ -431,7 +431,7 @@ public class Camera2VideoFragment extends Fragment
 
         // init audio & camera
         AudioNode audioNode = new AudioNode("audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
-        mCameraNode.setStreamCount(2);
+        mCameraNode.setStreamCount(3);
 
         // stream preview
         SurfaceNode previewNode = new SurfaceNode("preview", SurfaceData.TYPE_PREVIEW, previewSurface);
