@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 
 public class AudioNode extends ProcessNode<MediaData> {
-    private final String TAG = com.t2m.stream.node.AudioNode.class.getSimpleName() + "#" + this.hashCode();
+    private final String TAG = AudioNode.class.getSimpleName() + "#" + this.hashCode();
 
     private static final int BUFF_FRAME_COUNT = 100;
 
