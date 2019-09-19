@@ -250,6 +250,7 @@ public class Camera2VideoFragment extends Fragment
         if (mStreamManager != null) {
             mStreamManager.release(getContext());
         }
+        onCloseCamera();
         super.onPause();
     }
 
@@ -299,6 +300,10 @@ public class Camera2VideoFragment extends Fragment
 
             startPreview();
         });
+    }
+
+    private void onCloseCamera() {
+        mStreamManager.getCameraNode().closeCamera();
     }
 
     /**
