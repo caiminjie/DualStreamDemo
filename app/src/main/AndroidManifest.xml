@@ -20,7 +20,7 @@
         </activity>
 
         <service
-            android:name="com.t2m.dualstream.DualStreamService"
+            android:name="com.t2m.dualstream.StreamService"
             android:enabled="true"
             android:exported="false"></service>
     </application>

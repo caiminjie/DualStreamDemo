@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CameraRecordNode extends ProcessNode<SurfaceData> {
-    private static final String TAG = CameraRecordNode.class.getSimpleName();
+public class CameraNode extends ProcessNode<SurfaceData> {
+    private static final String TAG = CameraNode.class.getSimpleName();
 
     private static final int MSG_CAMERA_OPENED = 0;
     private static final int MSG_CAMERA_DISCONNECTED = 1;
@@ -62,22 +62,22 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
     private Handler.Callback mEventHandlerCallback = msg -> {
         switch (msg.what) {
             case MSG_CAMERA_OPENED:
-                CameraRecordNode.this.onCameraOpened((CameraDevice) msg.obj);
+                CameraNode.this.onCameraOpened((CameraDevice) msg.obj);
                 break;
             case MSG_CAMERA_DISCONNECTED:
-                CameraRecordNode.this.onCameraDisconnected((CameraDevice) msg.obj);
+                CameraNode.this.onCameraDisconnected((CameraDevice) msg.obj);
                 break;
             case MSG_CAMERA_ERROR:
-                CameraRecordNode.this.onCameraError((CameraDevice) msg.obj, msg.arg1);
+                CameraNode.this.onCameraError((CameraDevice) msg.obj, msg.arg1);
                 break;
             case MSG_SESSION_CONFIGURED:
-                CameraRecordNode.this.onSessionConfigured((CameraCaptureSession) msg.obj);
+                CameraNode.this.onSessionConfigured((CameraCaptureSession) msg.obj);
                 break;
             case MSG_SESSION_CONFIGURE_FAILED:
-                CameraRecordNode.this.onSessionConfigureFailed((CameraCaptureSession) msg.obj);
+                CameraNode.this.onSessionConfigureFailed((CameraCaptureSession) msg.obj);
                 break;
             case MSG_QUIT:
-                CameraRecordNode.this.onQuit();
+                CameraNode.this.onQuit();
             default:
                 Log.w(TAG, "Unknown message: " + msg.what);
         }
@@ -93,7 +93,7 @@ public class CameraRecordNode extends ProcessNode<SurfaceData> {
         void onCameraOpened();
     }
 
-    public CameraRecordNode(String name, Context context) {
+    public CameraNode(String name, Context context) {
         super(name);
 
         mContext = context;

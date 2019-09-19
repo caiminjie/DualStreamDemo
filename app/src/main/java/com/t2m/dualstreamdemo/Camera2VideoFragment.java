@@ -22,20 +22,14 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.Fragment;
-import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.app.ActivityCompat;
@@ -50,9 +44,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.t2m.dualstream.DualStreamService;
-import com.t2m.dualstream.DualStreamServiceManager;
-import com.t2m.dualstream.ICameraOpenedCallback;
+import com.t2m.dualstream.StreamManager;
+import com.t2m.stream.node.CameraNode;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -101,38 +94,7 @@ public class Camera2VideoFragment extends Fragment
     private Size mPreviewSize;
     private Size mVideoSize1;
     private Size mVideoSize2;
-    private DualStreamServiceManager mStreamManager;
-    private ICameraOpenedCallback mOnCameraOpened = new ICameraOpenedCallback.Stub() {
-        @Override
-        public void onCameraOpened() throws RemoteException {
-            mVideoSize1 = chooseVideoSize(mStreamManager.getAvailableCodecSize(), 16, 9, 1080);
-            mVideoSize2 = chooseVideoSize(mStreamManager.getAvailableCodecSize(), 16, 9, 720);
-            mPreviewSize = chooseOptimalSize(mStreamManager.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize1);
-            mStreamManager.setFps(chooseFps(mStreamManager.getAvailableFps(), 30, 30));
-
-            mStreamManager.setPreviewSize(mPreviewSize);
-            mStreamManager.setVideoSize(0, mVideoSize1);
-            mStreamManager.setVideoSize(1, mVideoSize2);
-
-            Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
-
-            mTextureView.post(() -> {
-                int orientation = getResources().getConfiguration().orientation;
-                int sensorOrientation = mStreamManager.getCameraOrientation();
-                boolean sensorLandscape = sensorOrientation == 0 || sensorOrientation == 180;
-                boolean deviceLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
-
-                if (deviceLandscape ^ sensorLandscape) {
-                    mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-                } else {
-                    mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
-                }
-                configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
-            });
-
-            startPreview();
-        }
-    };
+    private StreamManager mStreamManager;
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
@@ -238,18 +200,10 @@ public class Camera2VideoFragment extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Intent intent = new Intent(getContext(), DualStreamService.class);
-        getContext().bindService(intent, new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                mStreamManager = new DualStreamServiceManager(service);
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-                mStreamManager = null;
-            }
-        }, Service.BIND_AUTO_CREATE);
+        StreamManager.getService(
+                getContext(),
+                (manager) -> mStreamManager = manager,
+                () -> mStreamManager = null);
         return inflater.inflate(R.layout.fragment_camera2_video, container, false);
     }
 
@@ -257,7 +211,12 @@ public class Camera2VideoFragment extends Fragment
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         mTextureView = view.findViewById(R.id.texture);
         view.findViewById(R.id.video).setOnClickListener(v -> {
-            if (mStreamManager.getStatus() == DualStreamService.STATUS_RECORDING) {
+            if (mStreamManager == null) {
+                Log.w(TAG, "service not ready");
+                return;
+            }
+
+            if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING) {
                 ((TextView) v).setText(R.string.record);
                 startPreview();
             } else {
@@ -289,33 +248,57 @@ public class Camera2VideoFragment extends Fragment
     @Override
     public void onPause() {
         if (mStreamManager != null) {
-            mStreamManager.closeCamera();
+            mStreamManager.release(getContext());
         }
         super.onPause();
     }
 
-    private void updateStreamSurface() {
+    private Surface createPreviewSurface() {
         SurfaceTexture texture = mTextureView.getSurfaceTexture();
         assert texture != null;
         texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        mStreamManager.setPreviewSurface(new Surface(texture));
+        return new Surface(texture);
     }
 
     private void startPreview() {
-        updateStreamSurface();
-        mStreamManager.startPreview();
+        mStreamManager.startPreview(createPreviewSurface());
     }
 
     private void startVideoRecording() {
-        updateStreamSurface();
-        mStreamManager.startVideoRecording();
+        mStreamManager.startVideoRecording(createPreviewSurface(), mVideoSize1, mVideoSize2);
     }
 
     private void onOpenCamera() {
+        final CameraNode cameraNode = mStreamManager.getCameraNode();
         if (mCameraId == null) {
-            mCameraId = mStreamManager.getCameraIdList()[0];
+            mCameraId = cameraNode.getCameraIdList()[0];
         }
-        mStreamManager.openCamera(mCameraId, mOnCameraOpened);
+        cameraNode.setCameraId(mCameraId);
+        cameraNode.openCamera(() -> {
+            mVideoSize1 = chooseVideoSize(cameraNode.getAvailableCodecSize(), 16, 9, 1080);
+            mVideoSize2 = chooseVideoSize(cameraNode.getAvailableCodecSize(), 16, 9, 720);
+            mPreviewSize = chooseOptimalSize(cameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize1);
+
+            cameraNode.setFps(chooseFps(cameraNode.getAvailableFps(), 30, 30));
+
+            Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
+
+            mTextureView.post(() -> {
+                int orientation = getResources().getConfiguration().orientation;
+                int sensorOrientation = cameraNode.getSensorOrientation();
+                boolean sensorLandscape = sensorOrientation == 0 || sensorOrientation == 180;
+                boolean deviceLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
+
+                if (deviceLandscape ^ sensorLandscape) {
+                    mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+                } else {
+                    mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
+                }
+                configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
+            });
+
+            startPreview();
+        });
     }
 
     /**
