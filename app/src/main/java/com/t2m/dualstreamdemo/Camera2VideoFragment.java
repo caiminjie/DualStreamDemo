@@ -34,7 +34,6 @@ import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
-import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.LayoutInflater;
@@ -45,15 +44,12 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.t2m.dualstream.StreamManager;
-import com.t2m.stream.node.CameraNode;
+import com.t2m.dualstream.Utils;
+import com.t2m.stream.streams.LocalVideoStream;
+import com.t2m.stream.Stream;
+import com.t2m.npd.node.CameraNode;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Camera2VideoFragment extends Fragment
         implements FragmentCompat.OnRequestPermissionsResultCallback {
@@ -128,75 +124,6 @@ public class Camera2VideoFragment extends Fragment
         return new Camera2VideoFragment();
     }
 
-    private static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) {
-        if (choices != null) {
-            for (Range<Integer> range : choices) {
-                if (range.getLower() >= lower && range.getUpper() <= upper) {
-                    return range;
-                }
-            }
-        }
-        return new Range<>(lower, upper);
-    }
-
-    /**
-     * In this sample, we choose a video size with 3x4 aspect ratio. Also, we don't use sizes
-     * larger than 1080p, since MediaRecorder cannot handle such a high-resolution video.
-     *
-     * @param choices The list of available sizes
-     * @return The video size
-     */
-    private static Size chooseVideoSize(Size[] choices, int ratioWidth, int ratioHeight, int minWidth) {
-        List<Size> c = Stream.of(choices).map((item) -> (item.getWidth() > item.getHeight()) ? new Size(item.getHeight(), item.getWidth()) : item).collect(Collectors.toList());
-
-        if (ratioWidth > ratioHeight) {
-            int temp = ratioWidth;
-            ratioWidth = ratioHeight;
-            ratioHeight = temp;
-        }
-
-        for (int i=0; i<choices.length; i++) {
-            Size size = c.get(i);
-            if (size.getWidth() * ratioHeight == size.getHeight() * ratioWidth  && size.getWidth() <= minWidth) {
-                return choices[i];
-            }
-        }
-        Log.e(TAG, "Couldn't find any suitable video size");
-        return choices[choices.length - 1];
-    }
-
-    /**
-     * Given {@code choices} of {@code Size}s supported by a camera, chooses the smallest one whose
-     * width and height are at least as large as the respective requested values, and whose aspect
-     * ratio matches with the specified value.
-     *
-     * @param choices     The list of sizes that the camera supports for the intended output class
-     * @param width       The minimum desired width
-     * @param height      The minimum desired height
-     * @param aspectRatio The aspect ratio
-     * @return The optimal {@code Size}, or an arbitrary one if none were big enough
-     */
-    private static Size chooseOptimalSize(Size[] choices, int width, int height, Size aspectRatio) {
-        // Collect the supported resolutions that are at least as big as the preview Surface
-        List<Size> bigEnough = new ArrayList<>();
-        int w = aspectRatio.getWidth();
-        int h = aspectRatio.getHeight();
-        for (Size option : choices) {
-            if (option.getHeight() == option.getWidth() * h / w &&
-                    option.getWidth() >= width && option.getHeight() >= height) {
-                bigEnough.add(option);
-            }
-        }
-
-        // Pick the smallest of those, assuming we found any
-        if (bigEnough.size() > 0) {
-            return Collections.min(bigEnough, new CompareSizesByArea());
-        } else {
-            Log.e(TAG, "Couldn't find any suitable preview size");
-            return choices[0];
-        }
-    }
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -221,7 +148,7 @@ public class Camera2VideoFragment extends Fragment
                 startPreview();
             } else {
                 ((TextView) v).setText(R.string.stop);
-                startVideoRecording();
+                startDualVideoRecord();
             }
         });
         view.findViewById(R.id.info).setOnClickListener(v -> {
@@ -262,11 +189,41 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startPreview() {
-        mStreamManager.startPreview(createPreviewSurface());
+        Stream previewStream = mStreamManager.createPreviewStream("Preview")
+                .setPreviewSurface(createPreviewSurface())
+                .setPreferredPreviewSize(mTextureView.getWidth(), mTextureView.getHeight(), 16, 9);
+
+        mStreamManager.startStreams(
+                "Preview",
+                StreamManager.CHANNEL_BACKGROUND,
+                StreamManager.STATUS_PREVIEW,
+                true,
+                previewStream);
     }
 
-    private void startVideoRecording() {
-        mStreamManager.startVideoRecording(createPreviewSurface(), mVideoSize1, mVideoSize2);
+    private void startDualVideoRecord() {
+        Stream previewStream = mStreamManager.createPreviewStream("Preview")
+                .setPreviewSurface(createPreviewSurface())
+                .setPreferredPreviewSize(mTextureView.getWidth(), mTextureView.getHeight(), 16, 9);
+        Stream videoStream1 = mStreamManager.createLocalVideoStream("Video1")
+                .setPreferredVideoSize(1080, 16, 9)
+                .setVideoCodecType(LocalVideoStream.CODEC_H264)
+                .setBitRate(10000000)
+                .setFrameRate(30)
+                .setPath("/sdcard/DCIM/a.mp4");
+        Stream videoStream2 = mStreamManager.createLocalVideoStream("Video2")
+                .setPreferredVideoSize(720, 16, 9)
+                .setVideoCodecType(LocalVideoStream.CODEC_H264)
+                .setBitRate(10000000)
+                .setFrameRate(30)
+                .setPath("/sdcard/DCIM/b.mp4");
+
+        mStreamManager.startStreams(
+                "DualVideo",
+                StreamManager.CHANNEL_BACKGROUND,
+                StreamManager.STATUS_RECORDING,
+                true,
+                previewStream, videoStream1, videoStream2);
     }
 
     private void onOpenCamera() {
@@ -276,11 +233,14 @@ public class Camera2VideoFragment extends Fragment
         }
         cameraNode.setCameraId(mCameraId);
         cameraNode.openCamera(() -> {
-            mVideoSize1 = chooseVideoSize(cameraNode.getAvailableCodecSize(), 16, 9, 1080);
-            mVideoSize2 = chooseVideoSize(cameraNode.getAvailableCodecSize(), 16, 9, 720);
-            mPreviewSize = chooseOptimalSize(cameraNode.getAvailableSurfaceSize(), mTextureView.getWidth(), mTextureView.getHeight(), mVideoSize1);
+            mVideoSize1 = Utils.chooseVideoSize(cameraNode.getAvailableCodecSize(), 1080, 16, 9);
+            mVideoSize2 = Utils.chooseVideoSize(cameraNode.getAvailableCodecSize(), 720, 16, 9);
+            mPreviewSize = Utils.chooseOptimalSize(
+                    cameraNode.getAvailableSurfaceSize(),
+                    mTextureView.getWidth(), mTextureView.getHeight(),
+                    16, 9);
 
-            cameraNode.setFps(chooseFps(cameraNode.getAvailableFps(), 30, 30));
+            cameraNode.setFps(Utils.chooseFps(cameraNode.getAvailableFps(), 30, 30));
 
             Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
 
@@ -399,20 +359,6 @@ public class Camera2VideoFragment extends Fragment
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
         }
         mTextureView.setTransform(matrix);
-    }
-
-    /**
-     * Compares two {@code Size}s based on their areas.
-     */
-    static class CompareSizesByArea implements Comparator<Size> {
-
-        @Override
-        public int compare(Size lhs, Size rhs) {
-            // We cast here to ensure the multiplications won't overflow
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
-                    (long) rhs.getWidth() * rhs.getHeight());
-        }
-
     }
 
     public static class ErrorDialog extends DialogFragment {

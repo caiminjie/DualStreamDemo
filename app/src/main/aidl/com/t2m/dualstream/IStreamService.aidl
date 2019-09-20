@@ -4,10 +4,9 @@ package com.t2m.dualstream;
 // Declare any non-default types here with import statements
 interface IStreamService {
     int getCameraNode();
+    int getAudioNode();
 
     int getStatus(int channel);
-    void startTask(int channel, int status, int task, boolean stopPreviewTask);
-
-    void startPreview(int previewSurface);
-    void startVideoRecording(int previewSurface, int videoSize1, int videoSize2);
+    void startStreams(String name, int channel, int status, boolean stopPreviewTask, int streams);
+    void startTask(int channel, int status, boolean stopPreviewTask, int task);
 }

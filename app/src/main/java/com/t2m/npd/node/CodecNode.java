@@ -1,16 +1,16 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 import android.view.Surface;
 
-import com.t2m.stream.Data;
-import com.t2m.stream.Pipeline;
-import com.t2m.stream.data.MediaData;
-import com.t2m.stream.data.SurfaceData;
-import com.t2m.stream.pipeline.SimplePipeline;
+import com.t2m.npd.Data;
+import com.t2m.npd.Pipeline;
+import com.t2m.npd.data.MediaData;
+import com.t2m.npd.data.SurfaceData;
+import com.t2m.npd.pipeline.SimplePipeline;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;

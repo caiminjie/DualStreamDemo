@@ -1,10 +1,7 @@
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
-import com.t2m.stream.Data;
-import com.t2m.stream.Node;
-import com.t2m.stream.Pipeline;
-
-import java.util.List;
+import com.t2m.npd.Data;
+import com.t2m.npd.Node;
 
 public abstract class PipelineNode<T extends Data> extends Node {
     public PipelineNode(String name) {

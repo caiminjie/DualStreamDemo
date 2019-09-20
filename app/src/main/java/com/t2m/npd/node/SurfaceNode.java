@@ -1,12 +1,12 @@
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
 import android.util.Log;
 import android.view.Surface;
 
-import com.t2m.stream.Node;
-import com.t2m.stream.Pipeline;
-import com.t2m.stream.data.SurfaceData;
-import com.t2m.stream.pipeline.SimplePipeline;
+import com.t2m.npd.Node;
+import com.t2m.npd.Pipeline;
+import com.t2m.npd.data.SurfaceData;
+import com.t2m.npd.pipeline.SimplePipeline;
 
 import java.io.IOException;
 

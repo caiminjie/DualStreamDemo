@@ -1,8 +1,8 @@
-package com.t2m.stream.data;
+package com.t2m.npd.data;
 
 import android.view.Surface;
 
-import com.t2m.stream.Data;
+import com.t2m.npd.Data;
 
 public class SurfaceData extends Data {
     public static final int TYPE_PREVIEW = 0;

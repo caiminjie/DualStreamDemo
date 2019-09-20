@@ -1,6 +1,6 @@
-package com.t2m.stream;
+package com.t2m.npd;
 
-import com.t2m.stream.util.RetrySleepHelper;
+import com.t2m.npd.util.RetrySleepHelper;
 
 import java.io.IOException;
 

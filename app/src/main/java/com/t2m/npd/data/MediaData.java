@@ -1,9 +1,9 @@
-package com.t2m.stream.data;
+package com.t2m.npd.data;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 
-import com.t2m.stream.Data;
+import com.t2m.npd.Data;
 
 import java.nio.ByteBuffer;
 

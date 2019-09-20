@@ -1,12 +1,12 @@
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
 import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.util.Log;
 
-import com.t2m.stream.data.MediaData;
-import com.t2m.stream.util.Cache;
-import com.t2m.stream.util.Utils;
+import com.t2m.npd.data.MediaData;
+import com.t2m.npd.util.Cache;
+import com.t2m.npd.util.Utils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

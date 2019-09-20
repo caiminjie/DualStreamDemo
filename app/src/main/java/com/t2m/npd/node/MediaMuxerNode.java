@@ -1,12 +1,12 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
-import com.t2m.stream.data.MediaData;
+import com.t2m.npd.data.MediaData;
 
 import java.io.File;
 import java.io.IOException;

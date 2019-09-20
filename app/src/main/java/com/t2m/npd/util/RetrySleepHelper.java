@@ -1,4 +1,4 @@
-package com.t2m.stream.util;
+package com.t2m.npd.util;
 
 import android.util.Log;
 

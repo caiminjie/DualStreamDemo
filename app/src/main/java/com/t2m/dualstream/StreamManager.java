@@ -9,11 +9,17 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
-import android.util.Size;
-import android.view.Surface;
 
-import com.t2m.stream.Task;
-import com.t2m.stream.node.CameraNode;
+import com.t2m.stream.streams.LocalVideoStream;
+import com.t2m.stream.streams.PreviewStream;
+import com.t2m.stream.Stream;
+import com.t2m.stream.streams.UploadStream;
+import com.t2m.npd.node.AudioNode;
+import com.t2m.npd.node.CameraNode;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class StreamManager {
     private static final String TAG = StreamManager.class.getSimpleName();
@@ -91,6 +97,15 @@ public class StreamManager {
         }
     }
 
+    public AudioNode getAudioNode() {
+        try {
+            return StreamService.getData(mService.getAudioNode());
+        } catch (RemoteException e) {
+            Log.e(TAG, "remote exception", e);
+            return null;
+        }
+    }
+
     public int getStatus(int channel) {
         try {
             return mService.getStatus(channel);
@@ -100,32 +115,29 @@ public class StreamManager {
         }
     }
 
-    public void startTask(int channel, int status, Task task, boolean stopPreviewTask) {
+    public PreviewStream createPreviewStream(String name) {
+        return new PreviewStream(name, getCameraNode());
+    }
+
+    public LocalVideoStream createLocalVideoStream(String name) {
+        return new LocalVideoStream(name, getCameraNode(), getAudioNode());
+    }
+
+    public UploadStream createUploadStream(String name) {
+        return new UploadStream(name);
+    }
+
+    public void startStreams(String name, int channel, int status, boolean stopPreviewTask, List<Stream> streams) {
         try {
-            int taskKey = StreamService.putData(task);
-            mService.startTask(channel, status, taskKey, stopPreviewTask);
+            mService.startStreams(name, channel, status, stopPreviewTask, StreamService.putData(streams));
         } catch (RemoteException e) {
             Log.e(TAG, "remote exception", e);
         }
     }
 
-    public void startPreview(Surface previewSurface) {
-        try {
-            mService.startPreview(StreamService.putData(previewSurface));
-        } catch (RemoteException e) {
-            Log.e(TAG, "remote exception", e);
-        }
-    }
-
-    public void startVideoRecording(Surface previewSurface, Size videoSize1, Size videoSize2) {
-        try {
-            mService.startVideoRecording(
-                    StreamService.putData(previewSurface),
-                    StreamService.putData(videoSize1),
-                    StreamService.putData(videoSize2)
-            );
-        } catch (RemoteException e) {
-            Log.e(TAG, "remote exception", e);
-        }
+    public void startStreams(String name, int channel, int status, boolean stopPreviewTask, Stream... streams) {
+        ArrayList<Stream> s = new ArrayList<>();
+        Collections.addAll(s, streams);
+        startStreams(name, channel, status, stopPreviewTask, s);
     }
 }

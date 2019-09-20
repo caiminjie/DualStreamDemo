@@ -1,4 +1,4 @@
-package com.t2m.stream.node;
+package com.t2m.npd.node;
 
 import android.Manifest;
 import android.content.Context;
@@ -22,8 +22,8 @@ import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 
-import com.t2m.stream.Node;
-import com.t2m.stream.data.SurfaceData;
+import com.t2m.npd.Node;
+import com.t2m.npd.data.SurfaceData;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -170,6 +170,10 @@ public class CameraNode extends ProcessNode<SurfaceData> {
             Log.e(TAG, "getAvailableFps() failed.", e);
             return null;
         }
+    }
+
+    public boolean isCameraOpened() {
+        return mIsCameraOpened;
     }
 
     public int openCamera(OnCameraOpenedListener listener) {

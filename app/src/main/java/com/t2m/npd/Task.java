@@ -1,8 +1,8 @@
-package com.t2m.stream;
+package com.t2m.npd;
 
 import android.util.Log;
 
-import com.t2m.stream.node.PipelineNode;
+import com.t2m.npd.node.PipelineNode;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,9 +23,11 @@ public class Task {
     }
 
     public Task addNode(Node node) {
-        mNodes.add(node);
-        if (node instanceof PipelineNode) {
-            mPipelineNodes.add((PipelineNode<? extends Data>) node);
+        if (!mNodes.contains(node)) { // ignore added node
+            mNodes.add(node);
+            if (node instanceof PipelineNode) {
+                mPipelineNodes.add((PipelineNode<? extends Data>) node);
+            }
         }
         return this;
     }
