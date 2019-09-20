@@ -88,8 +88,6 @@ public class Camera2VideoFragment extends Fragment
     // TODO
     private String mCameraId = null;
     private Size mPreviewSize;
-    private Size mVideoSize1;
-    private Size mVideoSize2;
     private StreamManager mStreamManager;
 
     /**
@@ -191,7 +189,7 @@ public class Camera2VideoFragment extends Fragment
     private void startPreview() {
         Stream previewStream = mStreamManager.createPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
-                .setPreferredPreviewSize(mTextureView.getWidth(), mTextureView.getHeight(), 16, 9);
+                .setPreviewSize(mPreviewSize);
 
         mStreamManager.startStreams(
                 "Preview",
@@ -204,7 +202,7 @@ public class Camera2VideoFragment extends Fragment
     private void startDualVideoRecord() {
         Stream previewStream = mStreamManager.createPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
-                .setPreferredPreviewSize(mTextureView.getWidth(), mTextureView.getHeight(), 16, 9);
+                .setPreviewSize(mPreviewSize);
         Stream videoStream1 = mStreamManager.createLocalVideoStream("Video1")
                 .setPreferredVideoSize(1080, 16, 9)
                 .setVideoCodecType(LocalVideoStream.CODEC_H264)
@@ -233,8 +231,6 @@ public class Camera2VideoFragment extends Fragment
         }
         cameraNode.setCameraId(mCameraId);
         cameraNode.openCamera(() -> {
-            mVideoSize1 = Utils.chooseVideoSize(cameraNode.getAvailableCodecSize(), 1080, 16, 9);
-            mVideoSize2 = Utils.chooseVideoSize(cameraNode.getAvailableCodecSize(), 720, 16, 9);
             mPreviewSize = Utils.chooseOptimalSize(
                     cameraNode.getAvailableSurfaceSize(),
                     mTextureView.getWidth(), mTextureView.getHeight(),
@@ -242,7 +238,7 @@ public class Camera2VideoFragment extends Fragment
 
             cameraNode.setFps(Utils.chooseFps(cameraNode.getAvailableFps(), 30, 30));
 
-            Log.i(TAG, "Size# video1: [" + mVideoSize1 + "], video2: [" + mVideoSize2 + "], preview: [" + mPreviewSize + "]");
+            Log.i(TAG, "preview: [" + mPreviewSize + "]");
 
             mTextureView.post(() -> {
                 int orientation = getResources().getConfiguration().orientation;

@@ -48,15 +48,6 @@ public class PreviewStream extends Stream {
             }
         }
 
-        assert mPreviewSurface != null;
-        assert mPreferredPreviewSize != null;
-        assert mPreferredPreviewRatio != null;
-
-        // compute preview size
-        mPreviewSize = Utils.chooseOptimalSize(
-                mCameraNode.getAvailableSurfaceSize(),
-                mPreferredPreviewSize, mPreferredPreviewRatio);
-
         // create node
         SurfaceNode previewNode = new SurfaceNode(subName("Preview"), SurfaceData.TYPE_PREVIEW, mPreviewSurface);
 
@@ -83,8 +74,14 @@ public class PreviewStream extends Stream {
         return this;
     }
 
-    public void setPreviewSize(int width, int height) {
+    public PreviewStream setPreviewSize(int width, int height) {
         mPreviewSize = new Size(width, height);
+        return this;
+    }
+
+    public PreviewStream setPreviewSize(Size size) {
+        mPreviewSize = size;
+        return this;
     }
 
     public Size getPreviewSize() {

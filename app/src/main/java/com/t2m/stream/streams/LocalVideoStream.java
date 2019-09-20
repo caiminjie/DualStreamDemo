@@ -101,6 +101,11 @@ public class LocalVideoStream extends Stream {
         return this;
     }
 
+    public LocalVideoStream setPreviewSize(Size size) {
+        mVideoSize = size;
+        return this;
+    }
+
     public Size getVideoSize() {
         return mVideoSize;
     }
