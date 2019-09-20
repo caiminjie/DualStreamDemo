@@ -7,6 +7,7 @@ import android.media.MediaRecorder;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Pair;
+import android.util.Range;
 import android.util.SparseArray;
 
 import com.t2m.stream.Stream;
@@ -110,13 +111,17 @@ public class StreamService extends Service {
         }
 
         // init for stream count
-        int audioCount = 0;
-        int videoCount = 0;
-        for (Stream stream : streams) {
-            if (stream.hasAudio())  audioCount ++;
-            if (stream.hasVideo())  videoCount ++;
-        }
+        int audioCount = Stream.audioStreamCount(streams);
+        int videoCount = Stream.videoStreamCount(streams);
         mCameraNode.setStreamCount(videoCount);
+
+        // config camera fps
+        int minFps = Stream.minFrameRate(streams);
+        int maxFps = Stream.maxFrameRate(streams);
+        if (minFps > 0 && maxFps > 0) {
+            Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), minFps, maxFps);
+            mCameraNode.setFps(range);
+        }
 
         // init task
         Task task = Stream.build(name, streams);

@@ -9,9 +9,10 @@ import com.t2m.npd.Task;
 import com.t2m.npd.data.SurfaceData;
 import com.t2m.npd.node.CameraNode;
 import com.t2m.npd.node.SurfaceNode;
+import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
 
-public class PreviewStream extends Stream {
+public class PreviewStream extends Stream implements IVideoStream<PreviewStream> {
     private static final String TAG = PreviewStream.class.getSimpleName();
 
     private CameraNode mCameraNode;
@@ -19,9 +20,10 @@ public class PreviewStream extends Stream {
     private Size mPreferredPreviewSize = null;
     private Size mPreferredPreviewRatio = null;
     private Size mPreviewSize = null;
+    private int mFrameRate = 30;
 
     public PreviewStream(String name, CameraNode cameraNode) {
-        super(name, TYPE_PREVIEW, false, true);
+        super(name);
 
         mCameraNode = cameraNode;
     }
@@ -86,5 +88,16 @@ public class PreviewStream extends Stream {
 
     public Size getPreviewSize() {
         return mPreviewSize;
+    }
+
+    @Override
+    public PreviewStream setFrameRate(int frameRate) {
+        mFrameRate = frameRate;
+        return this;
+    }
+
+    @Override
+    public int getFrameRate() {
+        return mFrameRate;
     }
 }

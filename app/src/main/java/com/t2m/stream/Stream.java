@@ -4,39 +4,27 @@ import com.t2m.npd.Task;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 public abstract class Stream {
-    public static final int TYPE_PREVIEW = 0;
-    public static final int TYPE_LOCAL_VIDEO = 1;
-    public static final int TYPE_UPLOAD = 2;
-
     protected String mName;
-    protected int mType;
-    protected boolean mHasAudio;
-    protected boolean mHasVideo;
 
-    public Stream(String name, int type, boolean hasAudio, boolean hasVideo) {
+    public Stream(String name) {
         mName = name;
-        mType = type;
-        mHasAudio = hasAudio;
-        mHasVideo = hasVideo;
     }
 
     public String name() {
         return mName;
     }
 
-    public int type() {
-        return mType;
+    public boolean isAudio() {
+        return this instanceof IAudioStream;
     }
 
-    public boolean hasAudio() {
-        return mHasVideo;
-    }
-
-    public boolean hasVideo() {
-        return mHasVideo;
+    public boolean isVideo() {
+        return this instanceof IVideoStream;
     }
 
     protected String subName(String subName) {
@@ -59,5 +47,25 @@ public abstract class Stream {
             }
         }
         return task;
+    }
+
+    public static int audioStreamCount(List<Stream> streams) {
+        return (int) streams.stream().filter(Stream::isAudio).count();
+    }
+
+    public static int videoStreamCount(List<Stream> streams) {
+        return (int) streams.stream().filter(Stream::isVideo).count();
+    }
+
+    public static int minFrameRate(List<Stream> streams) {
+        return streams.stream().filter(Stream::isVideo) // only video stream
+                .min(Comparator.comparingInt((s) -> ((IVideoStream)s).getFrameRate())) // get min frame rate set
+                .map(stream -> ((IVideoStream) stream).getFrameRate()).orElse(0); // get min value
+    }
+
+    public static int maxFrameRate(List<Stream> streams) {
+        return streams.stream().filter(Stream::isVideo) // only video stream
+                .max(Comparator.comparingInt((s) -> ((IVideoStream)s).getFrameRate())) // get max frame rate set
+                .map(stream -> ((IVideoStream) stream).getFrameRate()).orElse(0); // get max value
     }
 }

@@ -14,13 +14,10 @@ import java.util.stream.Stream;
 public class Utils {
     private static final String TAG = Utils.class.getSimpleName();
 
-    public static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) {
+    public static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) { // TODO
         if (choices != null) {
-            for (Range<Integer> range : choices) {
-                if (range.getLower() >= lower && range.getUpper() <= upper) {
-                    return range;
-                }
-            }
+            return Stream.of(choices).filter((choice) -> choice.getLower() >= lower && choice.getUpper() <= upper)
+                    .findFirst().orElse(null);
         }
         return new Range<>(lower, upper);
     }

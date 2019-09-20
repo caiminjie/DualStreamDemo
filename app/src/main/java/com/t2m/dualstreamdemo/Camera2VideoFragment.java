@@ -235,9 +235,6 @@ public class Camera2VideoFragment extends Fragment
                     cameraNode.getAvailableSurfaceSize(),
                     mTextureView.getWidth(), mTextureView.getHeight(),
                     16, 9);
-
-            cameraNode.setFps(Utils.chooseFps(cameraNode.getAvailableFps(), 30, 30));
-
             Log.i(TAG, "preview: [" + mPreviewSize + "]");
 
             mTextureView.post(() -> {

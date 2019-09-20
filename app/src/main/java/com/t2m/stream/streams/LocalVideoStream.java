@@ -12,9 +12,11 @@ import com.t2m.npd.node.H264EncoderNode;
 import com.t2m.npd.node.H265EncoderNode;
 import com.t2m.npd.node.M4aEncoderNode;
 import com.t2m.npd.node.MediaMuxerNode;
+import com.t2m.stream.IAudioStream;
+import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
 
-public class LocalVideoStream extends Stream {
+public class LocalVideoStream extends Stream implements IAudioStream<LocalVideoStream>, IVideoStream<LocalVideoStream> {
     private static final String TAG = LocalVideoStream.class.getSimpleName();
 
     public static final int CODEC_H264 = 0;
@@ -32,7 +34,7 @@ public class LocalVideoStream extends Stream {
     private String mPath = null;
 
     public LocalVideoStream(String name, CameraNode cameraNode, AudioNode audioNode) {
-        super(name, TYPE_LOCAL_VIDEO, true, true);
+        super(name);
 
         mCameraNode = cameraNode;
         mAudioNode = audioNode;
@@ -115,9 +117,15 @@ public class LocalVideoStream extends Stream {
         return this;
     }
 
+    @Override
     public LocalVideoStream setFrameRate(int frameRate) {
         mFrameRate = frameRate;
         return this;
+    }
+
+    @Override
+    public int getFrameRate() {
+        return mFrameRate;
     }
 
     public LocalVideoStream setVideoCodecType(int codecType) {

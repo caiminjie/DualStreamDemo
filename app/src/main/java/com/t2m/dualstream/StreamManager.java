@@ -13,7 +13,7 @@ import android.util.Log;
 import com.t2m.stream.streams.LocalVideoStream;
 import com.t2m.stream.streams.PreviewStream;
 import com.t2m.stream.Stream;
-import com.t2m.stream.streams.UploadStream;
+import com.t2m.stream.streams.AudioUploadStream;
 import com.t2m.npd.node.AudioNode;
 import com.t2m.npd.node.CameraNode;
 
@@ -123,8 +123,8 @@ public class StreamManager {
         return new LocalVideoStream(name, getCameraNode(), getAudioNode());
     }
 
-    public UploadStream createUploadStream(String name) {
-        return new UploadStream(name);
+    public AudioUploadStream createUploadStream(String name) {
+        return new AudioUploadStream(name);
     }
 
     public void startStreams(String name, int channel, int status, boolean stopPreviewTask, List<Stream> streams) {
