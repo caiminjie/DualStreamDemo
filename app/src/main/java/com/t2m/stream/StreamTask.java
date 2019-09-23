@@ -45,12 +45,16 @@ public class StreamTask extends Task {
     public Task start() {
         synchronized (mStreams) {
             // init for stream count
-            mCameraNode.setStreamCount(mVideoCount);
+            if (mVideoCount > 0) {
+                mCameraNode.setStreamCount(mVideoCount);
 
-            // config camera fps
-            if (mMinFrameRate > 0 && mMaxFrameRate > 0) {
-                Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), mMinFrameRate, mMaxFrameRate);
-                mCameraNode.setFps(range);
+                // config camera fps
+                if (mMinFrameRate > 0 && mMaxFrameRate > 0) {
+                    Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), mMinFrameRate, mMaxFrameRate);
+                    mCameraNode.setFps(range);
+                } else {
+                    Log.w(TAG, "Has video stream, but no frame rate set.");
+                }
             }
 
             // build task nodes from streams
@@ -61,6 +65,15 @@ public class StreamTask extends Task {
 
         // start task
         return super.start();
+    }
+
+    @Override
+    public Task reset() {
+        mAudioCount = 0;
+        mVideoCount = 0;
+        mMinFrameRate = Integer.MAX_VALUE;
+        mMaxFrameRate = 0;
+        return super.reset();
     }
 
     @SuppressWarnings("unused | WeakerAccess | UnusedReturnValue")
