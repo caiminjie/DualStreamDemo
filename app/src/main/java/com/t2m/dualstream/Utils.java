@@ -22,6 +22,7 @@ public class Utils {
         return new Range<>(lower, upper);
     }
 
+    @SuppressWarnings("unused")
     public static Range<Integer> chooseFps(Range<Integer>[] choices, Range<Integer> target) {
         return chooseFps(choices, target.getLower(), target.getUpper());
     }
@@ -36,6 +37,7 @@ public class Utils {
      * @param ratioHeight The ratio height
      * @return The video size
      */
+    @SuppressWarnings("WeakerAccess")
     public static Size chooseVideoSize(Size[] choices, int minWidth, int ratioWidth, int ratioHeight) {
         List<Size> c = Stream.of(choices).map((item) -> (item.getWidth() > item.getHeight()) ? new Size(item.getHeight(), item.getWidth()) : item).collect(Collectors.toList());
 

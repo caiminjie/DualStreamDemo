@@ -170,6 +170,7 @@ public class AudioNode extends ProcessNode<MediaData> {
     }
 
     @Override
+    @SuppressWarnings("ALL")
     protected void onClose() throws IOException {
         Log.d(TAG, "[" + mName + "] onClose() before lock");
         synchronized(mOpenLock) {

@@ -16,10 +16,11 @@ import com.t2m.stream.IAudioStream;
 import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
 
-public class LocalVideoStream extends Stream implements IAudioStream<LocalVideoStream>, IVideoStream<LocalVideoStream> {
-    private static final String TAG = LocalVideoStream.class.getSimpleName();
+public class VideoRecordStream extends Stream implements IAudioStream<VideoRecordStream>, IVideoStream<VideoRecordStream> {
+    private static final String TAG = VideoRecordStream.class.getSimpleName();
 
     public static final int CODEC_H264 = 0;
+    @SuppressWarnings("WeakerAccess")
     public static final int CODEC_H265 = 1;
 
     private CameraNode mCameraNode;
@@ -33,7 +34,7 @@ public class LocalVideoStream extends Stream implements IAudioStream<LocalVideoS
     private int mVideoCodecType = CODEC_H264;
     private String mPath = null;
 
-    public LocalVideoStream(String name, CameraNode cameraNode, AudioNode audioNode) {
+    public VideoRecordStream(String name, CameraNode cameraNode, AudioNode audioNode) {
         super(name);
 
         mCameraNode = cameraNode;
@@ -92,33 +93,36 @@ public class LocalVideoStream extends Stream implements IAudioStream<LocalVideoS
         return true;
     }
 
-    public LocalVideoStream setPreferredVideoSize(int minWidth, int ratioWidth, int ratioHeight) {
+    public VideoRecordStream setPreferredVideoSize(int minWidth, int ratioWidth, int ratioHeight) {
         mPreferredVideoMinWidth = minWidth;
         mPreferredVideoRatio = new Size(ratioWidth, ratioHeight);
         return this;
     }
 
-    public LocalVideoStream setVideoSize(int width, int height) {
+    @SuppressWarnings("unused")
+    public VideoRecordStream setVideoSize(int width, int height) {
         mVideoSize = new Size(width, height);
         return this;
     }
 
-    public LocalVideoStream setPreviewSize(Size size) {
+    @SuppressWarnings("unused")
+    public VideoRecordStream setPreviewSize(Size size) {
         mVideoSize = size;
         return this;
     }
 
+    @SuppressWarnings("unused")
     public Size getVideoSize() {
         return mVideoSize;
     }
 
-    public LocalVideoStream setBitRate(int bitRate) {
+    public VideoRecordStream setBitRate(int bitRate) {
         mBitRate = bitRate;
         return this;
     }
 
     @Override
-    public LocalVideoStream setFrameRate(int frameRate) {
+    public VideoRecordStream setFrameRate(int frameRate) {
         mFrameRate = frameRate;
         return this;
     }
@@ -128,12 +132,13 @@ public class LocalVideoStream extends Stream implements IAudioStream<LocalVideoS
         return mFrameRate;
     }
 
-    public LocalVideoStream setVideoCodecType(int codecType) {
+    public VideoRecordStream setVideoCodecType(int codecType) {
         mVideoCodecType = codecType;
         return this;
     }
 
-    public LocalVideoStream setPath(String path) {
+    @SuppressWarnings("UnusedReturnValue")
+    public VideoRecordStream setPath(String path) {
         mPath = path;
         return this;
     }

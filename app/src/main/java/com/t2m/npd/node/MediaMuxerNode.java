@@ -29,7 +29,9 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
     private boolean mIsAudioConfigured = false;
     private boolean mIsVideoConfigured = false;
     private long prevOutputPTSUs = 0;
+    @SuppressWarnings("FieldCanBeLocal")
     private MediaFormat mAudioFormat;
+    @SuppressWarnings("FieldCanBeLocal")
     private MediaFormat mVideoFormat;
 
     private boolean mMuxStarted = false;
@@ -168,6 +170,7 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
      * get next encoding presentationTimeUs
      * @return time in ms
      */
+    @SuppressWarnings("WeakerAccess")
     protected long getPTSUs() {
         long result = System.nanoTime() / 1000L;
         // presentationTimeUs should be monotonic

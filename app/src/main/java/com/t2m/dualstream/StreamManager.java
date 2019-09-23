@@ -19,9 +19,12 @@ public class StreamManager {
     private static final String TAG = StreamManager.class.getSimpleName();
 
     public static final int CHANNEL_BACKGROUND = 0;
+    @SuppressWarnings("unused")
     public static final int CHANNEL_TEMP = 1;
+    @SuppressWarnings("WeakerAccess")
     public static final int CHANNEL_COUNT = 2;
 
+    @SuppressWarnings("WeakerAccess")
     public static final int STATUS_IDLE = 0;
     public static final int STATUS_PREVIEW = 1;
     public static final int STATUS_RECORDING = 2;
@@ -91,6 +94,7 @@ public class StreamManager {
         }
     }
 
+    @SuppressWarnings("unused")
     public AudioNode getAudioNode() {
         try {
             return StreamService.getData(mService.getAudioNode());

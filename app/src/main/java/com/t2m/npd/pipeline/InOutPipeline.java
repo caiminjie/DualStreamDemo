@@ -9,16 +9,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@SuppressWarnings("unused")
 public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
     private final List<ProcessNode<T>> mOutgoingList = new ArrayList<>();
     private final List<ProcessNode<T>> mIncomingList = new ArrayList<>();
     private List<ProcessNode<T>> mList;
     private boolean mListDirty = true;
 
+    @SuppressWarnings("unused")
     public InOutPipeline(String name) {
         super(name);
     }
 
+    @SuppressWarnings("unused")
     public InOutPipeline<T> addOutgoingNode(ProcessNode<T> node) {
         synchronized (mOutgoingList) {
             mOutgoingList.add(node);
@@ -26,6 +29,8 @@ public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
             return this;
         }
     }
+
+    @SuppressWarnings("WeakerAccess | UnusedReturnValue")
     public InOutPipeline<T> addIncomingNode(ProcessNode<T> node) {
         synchronized (mIncomingList) {
             mIncomingList.add(node);

@@ -21,7 +21,7 @@ import java.security.InvalidParameterException;
 public class CodecNode extends PipelineNode<Data> {
     private static final String TAG = CodecNode.class.getSimpleName();
 
-    private int mType = MediaData.TYPE_AUDIO;
+    private int mType;
     private MediaCodec mCodec;
     private boolean mIsEncoder;
     private MediaFormat mFormat;
@@ -31,6 +31,7 @@ public class CodecNode extends PipelineNode<Data> {
     private SimplePipeline<MediaData> mInPipeline;
     private SimplePipeline<MediaData> mOutPipeline;
 
+    @SuppressWarnings("WeakerAccess")
     public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
         super(name);
 

@@ -7,8 +7,9 @@ import com.t2m.dualstream.Utils;
 import com.t2m.npd.Task;
 import com.t2m.npd.node.AudioNode;
 import com.t2m.npd.node.CameraNode;
+import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.AudioUploadStream;
-import com.t2m.stream.streams.LocalVideoStream;
+import com.t2m.stream.streams.VideoRecordStream;
 import com.t2m.stream.streams.PreviewStream;
 import com.t2m.stream.streams.VideoUploadStream;
 
@@ -22,6 +23,12 @@ public class StreamTask extends Task {
     private CameraNode mCameraNode;
     private AudioNode mAudioNode;
 
+    @SuppressWarnings("unused")
+    private int mAudioCount = 0;
+    private int mVideoCount = 0;
+    private int mMinFrameRate = Integer.MAX_VALUE;
+    private int mMaxFrameRate = 0;
+
     public StreamTask(String name, CameraNode cameraNode, AudioNode audioNode) {
         super(name);
 
@@ -29,6 +36,7 @@ public class StreamTask extends Task {
         mAudioNode = audioNode;
     }
 
+    @SuppressWarnings("unused")
     public List<Stream> streams() {
         return mStreams;
     }
@@ -37,15 +45,11 @@ public class StreamTask extends Task {
     public Task start() {
         synchronized (mStreams) {
             // init for stream count
-            int audioCount = Stream.audioStreamCount(mStreams);
-            int videoCount = Stream.videoStreamCount(mStreams);
-            mCameraNode.setStreamCount(videoCount);
+            mCameraNode.setStreamCount(mVideoCount);
 
             // config camera fps
-            int minFps = Stream.minFrameRate(mStreams);
-            int maxFps = Stream.maxFrameRate(mStreams);
-            if (minFps > 0 && maxFps > 0) {
-                Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), minFps, maxFps);
+            if (mMinFrameRate > 0 && mMaxFrameRate > 0) {
+                Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), mMinFrameRate, mMaxFrameRate);
                 mCameraNode.setFps(range);
             }
 
@@ -59,37 +63,62 @@ public class StreamTask extends Task {
         return super.start();
     }
 
+    @SuppressWarnings("unused | WeakerAccess | UnusedReturnValue")
     public StreamTask addStream(Stream stream) {
         synchronized (mStreams) {
             if (stream == null || mStreams.contains(stream)) {
-                Log.w(TAG, "addStream()# stream is null or already added");
+                Log.w(TAG, "addStream()# stream is null or already added. Ignore it.");
                 return this;
             }
+
+            // config
+            if (stream.isAudio()) {
+                mAudioCount ++;
+            }
+            if (stream.isVideo()) {
+                mVideoCount ++;
+                int frameRate = ((IVideoStream) stream).getFrameRate();
+                if (frameRate > mMaxFrameRate)  mMaxFrameRate = frameRate;
+                if (frameRate < mMinFrameRate)  mMinFrameRate = frameRate;
+            }
+
+            // add
             mStreams.add(stream);
             return this;
         }
     }
 
+    @SuppressWarnings("unused")
     public PreviewStream addPreviewStream(String name) {
         PreviewStream stream = new PreviewStream(name, mCameraNode);
         addStream(stream);
         return stream;
     }
 
-    public LocalVideoStream addLocalVideoStream(String name) {
-        LocalVideoStream stream = new LocalVideoStream(name, mCameraNode, mAudioNode);
+    @SuppressWarnings("unused")
+    public VideoRecordStream addVideoRecordStream(String name) {
+        VideoRecordStream stream = new VideoRecordStream(name, mCameraNode, mAudioNode);
         addStream(stream);
         return stream;
     }
 
+    @SuppressWarnings("unused")
     public AudioUploadStream addAudioUploadStream(String name) {
         AudioUploadStream stream = new AudioUploadStream(name);
         addStream(stream);
         return stream;
     }
 
+    @SuppressWarnings("unused")
     public VideoUploadStream addVideoUploadStream(String name) {
         VideoUploadStream stream = new VideoUploadStream(name);
+        addStream(stream);
+        return stream;
+    }
+
+    @SuppressWarnings("unused")
+    public AudioRecordStream addAudioRecordStream(String name) {
+        AudioRecordStream stream = new AudioRecordStream(name, mAudioNode);
         addStream(stream);
         return stream;
     }

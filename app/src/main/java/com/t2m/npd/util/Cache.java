@@ -86,7 +86,7 @@ public class Cache<T> {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked | unused")
     public void clear() {
         for (int i = 0; i < mCachedBuffs.length; i++) {
             if (mCachedBuffs[i] == null) {

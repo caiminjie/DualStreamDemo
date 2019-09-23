@@ -94,6 +94,7 @@ public class Task {
         }
     }
 
+    @SuppressWarnings("unused")
     public Task reset() {
         synchronized (mThreadLock) {
             mThread = null;
@@ -103,6 +104,7 @@ public class Task {
         }
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public Task waitForFinish() {
         Log.i("==MyTest==", "[" + mName + "] waitForFinish()# begin.");
         if (mThread == null) {

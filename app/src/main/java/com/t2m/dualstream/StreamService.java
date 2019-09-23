@@ -17,6 +17,7 @@ import com.t2m.stream.StreamTask;
 import java.util.LinkedList;
 
 public class StreamService extends Service {
+    @SuppressWarnings("unused")
     private static final String TAG = StreamService.class.getSimpleName();
 
     private final Channel[] mChannels = new Channel[StreamManager.CHANNEL_COUNT];
@@ -42,6 +43,7 @@ public class StreamService extends Service {
             }
         }
 
+        @SuppressWarnings("SameParameterValue")
         private void cancelAllTask(boolean wait) {
             while (pop() != null); // remove all queued tasks
             cancelCurrentTask(wait); // cancel current task
@@ -129,6 +131,7 @@ public class StreamService extends Service {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T getData(int key) {
         synchronized (sDataStore) {
             Object value = sDataStore.get(key);

@@ -8,11 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class SimplePipeline<T extends Data> extends Pipeline<T> {
+    @SuppressWarnings("unused")
     private static final String TAG = SimplePipeline.class.getSimpleName();
 
     private final List<ProcessNode<T>> mList = new ArrayList<>();
 
-
+    @SuppressWarnings("WeakerAccess")
     public SimplePipeline(String name) {
         super(name);
     }

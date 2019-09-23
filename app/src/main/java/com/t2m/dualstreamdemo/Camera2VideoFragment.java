@@ -47,7 +47,7 @@ import com.t2m.dualstream.StreamManager;
 import com.t2m.dualstream.Utils;
 import com.t2m.stream.StreamTask;
 import com.t2m.npd.node.CameraNode;
-import com.t2m.stream.streams.LocalVideoStream;
+import com.t2m.stream.streams.VideoRecordStream;
 
 import java.io.File;
 
@@ -211,15 +211,15 @@ public class Camera2VideoFragment extends Fragment
         task.addPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
                 .setPreviewSize(mPreviewSize);
-        task.addLocalVideoStream("Video1")
+        task.addVideoRecordStream("Video1")
                 .setPreferredVideoSize(1080, 16, 9)
-                .setVideoCodecType(LocalVideoStream.CODEC_H264)
+                .setVideoCodecType(VideoRecordStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
                 .setPath("/sdcard/DCIM/a.mp4");
-        task.addLocalVideoStream("Video2")
+        task.addVideoRecordStream("Video2")
                 .setPreferredVideoSize(720, 16, 9)
-                .setVideoCodecType(LocalVideoStream.CODEC_H264)
+                .setVideoCodecType(VideoRecordStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
                 .setPath("/sdcard/DCIM/b.mp4");

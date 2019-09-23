@@ -8,9 +8,12 @@ public abstract class Node {
     private static final String TAG = Node.class.getSimpleName();
 
     public static final int RESULT_OK = 0;
+    @SuppressWarnings("WeakerAccess")
     public static final int RESULT_RETRY = 1;
+    @SuppressWarnings("WeakerAccess")
     public static final int RESULT_NOT_OPEN = 2;
     public static final int RESULT_ERROR = 3;
+    @SuppressWarnings("WeakerAccess")
     public static final int RESULT_EOS = 4;
 
     public static final int STATUS_NOT_OPENED = 0;
@@ -66,6 +69,7 @@ public abstract class Node {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public boolean isOpened() {
         synchronized (mOpenLock) {
             return mIsOpened;

@@ -44,6 +44,7 @@ public class RetrySleepHelper {
      * @param maxThreshold max threshold that should increase sleep time
      * @param step sleep time change step
      */
+    @SuppressWarnings("WeakerAccess")
     public RetrySleepHelper(String name, int minThreshold, int maxThreshold, long step) {
         mName = name;
         mMinThreshold = minThreshold;
@@ -99,6 +100,7 @@ public class RetrySleepHelper {
         }
     }
 
+    @SuppressWarnings("unused")
     public void reset() {
         mSleepTime = 0;
     }

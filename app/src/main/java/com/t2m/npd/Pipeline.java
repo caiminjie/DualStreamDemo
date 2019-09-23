@@ -104,12 +104,14 @@ public abstract class Pipeline <T extends Data> {
         }
     }
 
+    @SuppressWarnings("unused")
     public boolean isStarted() {
         synchronized (mThreadLock) {
             return mThread != null;
         }
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public Pipeline<T> addNode(ProcessNode<T> node) {
         onAddNode(node);
         return this;

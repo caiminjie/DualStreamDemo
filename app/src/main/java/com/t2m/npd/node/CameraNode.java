@@ -124,6 +124,7 @@ public class CameraNode extends ProcessNode<SurfaceData> {
         }
     }
 
+    @SuppressWarnings("WeakerAccess")
     public Size[] getAvailableSize(Class<?> clazz) {
         try {
             StreamConfigurationMap map = mCameraManager.getCameraCharacteristics(mCameraId)
@@ -172,10 +173,12 @@ public class CameraNode extends ProcessNode<SurfaceData> {
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isCameraOpened() {
         return mIsCameraOpened;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public int openCamera(OnCameraOpenedListener listener) {
         if (mIsCameraOpened) {
             return RESULT_OK;
@@ -225,10 +228,7 @@ public class CameraNode extends ProcessNode<SurfaceData> {
                     mEventHandler.sendMessage(msg);
                 }
             }, mCameraHandler);
-        } catch (CameraAccessException e) {
-            Log.e(TAG, "open camera failed.", e);
-            mEventHandler.sendEmptyMessage(MSG_QUIT);
-        } catch (NullPointerException e) {
+        } catch (CameraAccessException | NullPointerException e) {
             Log.e(TAG, "open camera failed.", e);
             mEventHandler.sendEmptyMessage(MSG_QUIT);
         }
@@ -272,6 +272,7 @@ public class CameraNode extends ProcessNode<SurfaceData> {
         return this;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     private Node realOpen() throws IOException {
         return super.open();
     }
@@ -372,10 +373,12 @@ public class CameraNode extends ProcessNode<SurfaceData> {
         }
     }
 
+    @SuppressWarnings("unused")
     private void onCameraDisconnected(CameraDevice device) {
         mEventHandler.sendEmptyMessage(MSG_QUIT);
     }
 
+    @SuppressWarnings("unused")
     private void onCameraError(CameraDevice device, int error) {
         mEventHandler.sendEmptyMessage(MSG_QUIT);
     }
@@ -400,6 +403,7 @@ public class CameraNode extends ProcessNode<SurfaceData> {
         }
     }
 
+    @SuppressWarnings("unused")
     private void onSessionConfigureFailed(CameraCaptureSession session) {
         mEventHandler.sendEmptyMessage(MSG_QUIT);
     }

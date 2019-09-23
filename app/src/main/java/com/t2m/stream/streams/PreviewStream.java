@@ -70,22 +70,26 @@ public class PreviewStream extends Stream implements IVideoStream<PreviewStream>
         return this;
     }
 
+    @SuppressWarnings("unused")
     public PreviewStream setPreferredPreviewSize(int width, int height, int ratioWidth, int ratioHeight) {
         mPreferredPreviewSize = new Size(width, height);
         mPreferredPreviewRatio = new Size(ratioWidth, ratioHeight);
         return this;
     }
 
+    @SuppressWarnings("unused")
     public PreviewStream setPreviewSize(int width, int height) {
         mPreviewSize = new Size(width, height);
         return this;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public PreviewStream setPreviewSize(Size size) {
         mPreviewSize = size;
         return this;
     }
 
+    @SuppressWarnings("unused")
     public Size getPreviewSize() {
         return mPreviewSize;
     }

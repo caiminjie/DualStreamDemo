@@ -27,6 +27,7 @@ public class MediaData extends Data {
         this.format = null;
     }
 
+    @SuppressWarnings("unused")
     public void markConfig() {
         info.flags |= MediaCodec.BUFFER_FLAG_CODEC_CONFIG;
     }
@@ -35,14 +36,17 @@ public class MediaData extends Data {
         return (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0;
     }
 
+    @SuppressWarnings("unused")
     public void markEos() {
         info.flags |= MediaCodec.BUFFER_FLAG_END_OF_STREAM;
     }
 
+    @SuppressWarnings("unused")
     public boolean isEos() {
         return (info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
     }
 
+    @SuppressWarnings("unused")
     public void clearFlags() {
         info.flags = 0;
     }
