@@ -1,6 +1,5 @@
 package com.t2m.stream;
 
-import android.graphics.Camera;
 import android.util.Log;
 import android.util.Range;
 
