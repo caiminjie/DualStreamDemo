@@ -7,6 +7,6 @@ interface IStreamService {
     int getAudioNode();
 
     int getStatus(int channel);
-    void startStreams(String name, int channel, int status, boolean stopPreviewTask, int streams);
+    int createStreamTask(String name);
     void startTask(int channel, int status, boolean stopPreviewTask, int task);
 }

@@ -7,16 +7,14 @@ import android.media.MediaRecorder;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Pair;
-import android.util.Range;
 import android.util.SparseArray;
 
-import com.t2m.stream.Stream;
 import com.t2m.npd.Task;
 import com.t2m.npd.node.AudioNode;
 import com.t2m.npd.node.CameraNode;
+import com.t2m.stream.StreamTask;
 
 import java.util.LinkedList;
-import java.util.List;
 
 public class StreamService extends Service {
     private static final String TAG = StreamService.class.getSimpleName();
@@ -102,37 +100,6 @@ public class StreamService extends Service {
         super.onDestroy();
     }
 
-    public void startStreams(String name, int channel, int status, boolean stopPreviewTask, List<Stream> streams) throws RemoteException {
-        Channel ch = mChannels[channel];
-
-        // close preview task if necessary
-        if (stopPreviewTask) {
-            ch.cancelAllTask(true);
-        }
-
-        // init for stream count
-        int audioCount = Stream.audioStreamCount(streams);
-        int videoCount = Stream.videoStreamCount(streams);
-        mCameraNode.setStreamCount(videoCount);
-
-        // config camera fps
-        int minFps = Stream.minFrameRate(streams);
-        int maxFps = Stream.maxFrameRate(streams);
-        if (minFps > 0 && maxFps > 0) {
-            Range<Integer> range = Utils.chooseFps(mCameraNode.getAvailableFps(), minFps, maxFps);
-            mCameraNode.setFps(range);
-        }
-
-        // init task
-        Task task = Stream.build(name, streams);
-        if (task == null) {
-            throw new RemoteException("build task from stream failed.");
-        }
-
-        // start
-        ch.push(status, task);
-    }
-
     private void startTask(int channel, int status, boolean stopPreviewTask, Task task) {
         Channel ch = mChannels[channel];
 
@@ -193,8 +160,8 @@ public class StreamService extends Service {
         }
 
         @Override
-        public void startStreams(String name, int channel, int status, boolean stopPreviewTask, int streams) throws RemoteException {
-            StreamService.this.startStreams(name, channel, status, stopPreviewTask, getData(streams));
+        public int createStreamTask(String name) throws RemoteException {
+            return putData(new StreamTask(name, mCameraNode, mAudioNode));
         }
 
 

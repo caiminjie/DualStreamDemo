@@ -14,9 +14,9 @@ import java.util.stream.Stream;
 public class Utils {
     private static final String TAG = Utils.class.getSimpleName();
 
-    public static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) { // TODO
+    public static Range<Integer> chooseFps(Range<Integer>[] choices, int lower, int upper) {
         if (choices != null) {
-            return Stream.of(choices).filter((choice) -> choice.getLower() >= lower && choice.getUpper() <= upper)
+            return Stream.of(choices).filter((choice) -> choice.getLower() >= lower && choice.getUpper() >= upper)
                     .findFirst().orElse(null);
         }
         return new Range<>(lower, upper);

@@ -10,16 +10,10 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 
-import com.t2m.stream.streams.LocalVideoStream;
-import com.t2m.stream.streams.PreviewStream;
-import com.t2m.stream.Stream;
-import com.t2m.stream.streams.AudioUploadStream;
+import com.t2m.npd.Task;
+import com.t2m.stream.StreamTask;
 import com.t2m.npd.node.AudioNode;
 import com.t2m.npd.node.CameraNode;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class StreamManager {
     private static final String TAG = StreamManager.class.getSimpleName();
@@ -115,29 +109,20 @@ public class StreamManager {
         }
     }
 
-    public PreviewStream createPreviewStream(String name) {
-        return new PreviewStream(name, getCameraNode());
-    }
-
-    public LocalVideoStream createLocalVideoStream(String name) {
-        return new LocalVideoStream(name, getCameraNode(), getAudioNode());
-    }
-
-    public AudioUploadStream createUploadStream(String name) {
-        return new AudioUploadStream(name);
-    }
-
-    public void startStreams(String name, int channel, int status, boolean stopPreviewTask, List<Stream> streams) {
+    public StreamTask createStreamTask(String name) {
         try {
-            mService.startStreams(name, channel, status, stopPreviewTask, StreamService.putData(streams));
+            return StreamService.getData(mService.createStreamTask(name));
         } catch (RemoteException e) {
             Log.e(TAG, "remote exception", e);
+            return null;
         }
     }
 
-    public void startStreams(String name, int channel, int status, boolean stopPreviewTask, Stream... streams) {
-        ArrayList<Stream> s = new ArrayList<>();
-        Collections.addAll(s, streams);
-        startStreams(name, channel, status, stopPreviewTask, s);
+    public void startTask(int channel, int status, boolean stopPreviewTask, Task task) {
+        try {
+            mService.startTask(channel, status, stopPreviewTask, StreamService.putData(task));
+        } catch (RemoteException e) {
+            Log.e(TAG, "remote exception", e);
+        }
     }
 }

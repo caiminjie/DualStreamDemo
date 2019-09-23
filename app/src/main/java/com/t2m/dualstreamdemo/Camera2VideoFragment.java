@@ -45,9 +45,9 @@ import android.widget.TextView;
 
 import com.t2m.dualstream.StreamManager;
 import com.t2m.dualstream.Utils;
-import com.t2m.stream.streams.LocalVideoStream;
-import com.t2m.stream.Stream;
+import com.t2m.stream.StreamTask;
 import com.t2m.npd.node.CameraNode;
+import com.t2m.stream.streams.LocalVideoStream;
 
 import java.io.File;
 
@@ -187,41 +187,49 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startPreview() {
-        Stream previewStream = mStreamManager.createPreviewStream("Preview")
+        // create task
+        StreamTask task = mStreamManager.createStreamTask("Preview");
+
+        // config task
+        task.addPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
                 .setPreviewSize(mPreviewSize);
 
-        mStreamManager.startStreams(
-                "Preview",
+        // start task
+        mStreamManager.startTask(
                 StreamManager.CHANNEL_BACKGROUND,
                 StreamManager.STATUS_PREVIEW,
                 true,
-                previewStream);
+                task);
     }
 
     private void startDualVideoRecord() {
-        Stream previewStream = mStreamManager.createPreviewStream("Preview")
+        // create task
+        StreamTask task = mStreamManager.createStreamTask("DualVideo");
+
+        // config task
+        task.addPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
                 .setPreviewSize(mPreviewSize);
-        Stream videoStream1 = mStreamManager.createLocalVideoStream("Video1")
+        task.addLocalVideoStream("Video1")
                 .setPreferredVideoSize(1080, 16, 9)
                 .setVideoCodecType(LocalVideoStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
                 .setPath("/sdcard/DCIM/a.mp4");
-        Stream videoStream2 = mStreamManager.createLocalVideoStream("Video2")
+        task.addLocalVideoStream("Video2")
                 .setPreferredVideoSize(720, 16, 9)
                 .setVideoCodecType(LocalVideoStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
                 .setPath("/sdcard/DCIM/b.mp4");
 
-        mStreamManager.startStreams(
-                "DualVideo",
+        // start task
+        mStreamManager.startTask(
                 StreamManager.CHANNEL_BACKGROUND,
                 StreamManager.STATUS_RECORDING,
                 true,
-                previewStream, videoStream1, videoStream2);
+                task);
     }
 
     private void onOpenCamera() {
@@ -256,7 +264,9 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void onCloseCamera() {
-        mStreamManager.getCameraNode().closeCamera();
+        if (mStreamManager != null) {
+            mStreamManager.getCameraNode().closeCamera();
+        }
     }
 
     /**
