@@ -45,8 +45,9 @@ import android.widget.TextView;
 
 import com.t2m.dualstream.StreamManager;
 import com.t2m.dualstream.Utils;
+import com.t2m.npd.node.process.AudioNode;
 import com.t2m.stream.StreamTask;
-import com.t2m.npd.node.CameraNode;
+import com.t2m.npd.node.process.CameraNode;
 import com.t2m.stream.streams.VideoRecordStream;
 
 import java.io.File;
@@ -146,7 +147,8 @@ public class Camera2VideoFragment extends Fragment
                 startPreview();
             } else {
                 ((TextView) v).setText(R.string.stop);
-                startDualVideoRecord();
+                //startDualVideoRecord();
+                startVideoAudioRecord();
             }
         });
         view.findViewById(R.id.info).setOnClickListener(v -> {
@@ -223,6 +225,36 @@ public class Camera2VideoFragment extends Fragment
                 .setBitRate(10000000)
                 .setFrameRate(30)
                 .setPath("/sdcard/DCIM/b.mp4");
+
+        // start task
+        mStreamManager.startTask(
+                StreamManager.CHANNEL_BACKGROUND,
+                StreamManager.STATUS_RECORDING,
+                true,
+                task);
+    }
+
+    private void startVideoAudioRecord() {
+        AudioNode audioNode = mStreamManager.getAudioNode();
+
+        // create task
+        StreamTask task = mStreamManager.createStreamTask("DualVideo");
+
+        // config task
+        task.addPreviewStream("Preview")
+                .setPreviewSurface(createPreviewSurface())
+                .setPreviewSize(mPreviewSize);
+        task.addVideoRecordStream("Video")
+                .setPreferredVideoSize(1080, 16, 9)
+                .setVideoCodecType(VideoRecordStream.CODEC_H264)
+                .setBitRate(10000000)
+                .setFrameRate(30)
+                .setPath("/sdcard/DCIM/a.mp4");
+        task.addAudioRecordStream("Audio")
+                .setAudioFormat(audioNode.getAudioFormat())
+                .setChannelCount(audioNode.getChannelCount())
+                .setSampleRate(audioNode.getSampleRate())
+                .setPath("/sdcard/DCIM/b.wav");
 
         // start task
         mStreamManager.startTask(

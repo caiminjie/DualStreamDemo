@@ -17,8 +17,8 @@ public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
     private boolean mListDirty = true;
 
     @SuppressWarnings("unused")
-    public InOutPipeline(String name) {
-        super(name);
+    public InOutPipeline(String name, DataAdapter<T> adapter) {
+        super(name, adapter);
     }
 
     @SuppressWarnings("unused")
@@ -54,7 +54,8 @@ public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
     }
 
     @Override
-    protected void onAddNode(ProcessNode<T> node) {
+    public Pipeline<T> addNode(ProcessNode<T> node) {
         addIncomingNode(node);
+        return this;
     }
 }

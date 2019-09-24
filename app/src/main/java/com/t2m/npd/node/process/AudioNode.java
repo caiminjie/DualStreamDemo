@@ -1,4 +1,4 @@
-package com.t2m.npd.node;
+package com.t2m.npd.node.process;
 
 import android.media.AudioRecord;
 import android.media.MediaCodec;
@@ -6,6 +6,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.t2m.npd.data.MediaData;
+import com.t2m.npd.node.ProcessNode;
 import com.t2m.npd.util.Cache;
 import com.t2m.npd.util.Utils;
 
@@ -220,8 +221,7 @@ public class AudioNode extends ProcessNode<MediaData> {
         }
 
         // copy to data
-        data.buffer.clear();
-        data.buffer.put(buffer.buffer, 0, buffer.len);
+        data.write(buffer.buffer, 0, buffer.len);
         data.info.flags = buffer.info.flags;
         data.info.offset = buffer.info.offset;
         data.info.size = buffer.info.size;
@@ -274,5 +274,17 @@ public class AudioNode extends ProcessNode<MediaData> {
                 return RESULT_OK;
             }
         }
+    }
+
+    public int getSampleRate() {
+        return mSampleRate;
+    }
+
+    public int getChannelCount() {
+        return mChannelCount;
+    }
+
+    public int getAudioFormat() {
+        return mAudioFormat;
     }
 }

@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 Tcl Corporation Limited */
-package com.t2m.npd.node;
+package com.t2m.npd.node.pipeline;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
@@ -10,6 +10,7 @@ import com.t2m.npd.Data;
 import com.t2m.npd.Pipeline;
 import com.t2m.npd.data.MediaData;
 import com.t2m.npd.data.SurfaceData;
+import com.t2m.npd.node.PipelineNode;
 import com.t2m.npd.pipeline.SimplePipeline;
 
 import java.io.IOException;
@@ -49,61 +50,64 @@ public class CodecNode extends PipelineNode<Data> {
         }
 
         // create input pipeline
-        mInPipelineSurface = new SimplePipeline<SurfaceData>(mName + "#InPipeline.Surface") {
-            @Override
-            protected SurfaceData onCreateData() {
-                return new SurfaceData();
-            }
+        mInPipelineSurface = new SimplePipeline<>(mName + "#InPipeline.Surface",
+                new Pipeline.DataAdapter<SurfaceData>() {
+                    @Override
+                    public SurfaceData onCreateData() {
+                        return new SurfaceData();
+                    }
 
-            @Override
-            protected int onBindData(SurfaceData data) {
-                return CodecNode.this.bindInputDataSurface(data);
-            }
+                    @Override
+                    public int onBindData(SurfaceData data) {
+                        return CodecNode.this.bindInputDataSurface(data);
+                    }
 
-            @Override
-            protected void onReleaseData(SurfaceData data) {
-                CodecNode.this.releaseInputDataSurface(data);
-                stop();
-            }
-        };
-        mInPipeline = new SimplePipeline<MediaData>(mName + "#InPipeline") {
-            private int id = hashCode();
+                    @Override
+                    public void onReleaseData(SurfaceData data) {
+                        CodecNode.this.releaseInputDataSurface(data);
+                        mInPipelineSurface.stop();
+                    }
+                });
+        mInPipeline = new SimplePipeline<>(mName + "#InPipeline",
+                new Pipeline.DataAdapter<MediaData>() {
+                    private int id = hashCode();
 
-            @Override
-            protected MediaData onCreateData() {
-                return new MediaData(id, mType);
-            }
+                    @Override
+                    public MediaData onCreateData() {
+                        return new MediaData(id, mType);
+                    }
 
-            @Override
-            protected int onBindData(MediaData data) {
-                return CodecNode.this.bindInputData(data);
-            }
+                    @Override
+                    public int onBindData(MediaData data) {
+                        return CodecNode.this.bindInputData(data);
+                    }
 
-            @Override
-            protected void onReleaseData(MediaData data) {
-                CodecNode.this.releaseInputData(data);
-            }
-        };
+                    @Override
+                    public void onReleaseData(MediaData data) {
+                        CodecNode.this.releaseInputData(data);
+                    }
+                });
 
         // create output pipeline
-        mOutPipeline = new SimplePipeline<MediaData>(mName + "#OutPipeline") {
-            private int id = hashCode();
+        mOutPipeline = new SimplePipeline<>(mName + "#OutPipeline",
+                new Pipeline.DataAdapter<MediaData>() {
+                    private int id = hashCode();
 
-            @Override
-            protected MediaData onCreateData() {
-                return new MediaData(id, mType);
-            }
+                    @Override
+                    public MediaData onCreateData() {
+                        return new MediaData(id, mType);
+                    }
 
-            @Override
-            protected int onBindData(MediaData data) {
-                return CodecNode.this.bindOutputData(data);
-            }
+                    @Override
+                    public int onBindData(MediaData data) {
+                        return CodecNode.this.bindOutputData(data);
+                    }
 
-            @Override
-            protected void onReleaseData(MediaData data) {
-                CodecNode.this.releaseOutputData(data);
-            }
-        };
+                    @Override
+                    public void onReleaseData(MediaData data) {
+                        CodecNode.this.releaseOutputData(data);
+                    }
+                });
     }
 
     @Override

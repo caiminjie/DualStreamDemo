@@ -5,8 +5,8 @@ import android.util.Range;
 
 import com.t2m.dualstream.Utils;
 import com.t2m.npd.Task;
-import com.t2m.npd.node.AudioNode;
-import com.t2m.npd.node.CameraNode;
+import com.t2m.npd.node.process.AudioNode;
+import com.t2m.npd.node.process.CameraNode;
 import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.AudioUploadStream;
 import com.t2m.stream.streams.VideoRecordStream;

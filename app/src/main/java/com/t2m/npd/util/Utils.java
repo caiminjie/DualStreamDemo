@@ -33,6 +33,10 @@ public class Utils {
         }
     }
 
+    public static int getBitsPerSample(int audioFormat) {
+        return getBytesPerSample(audioFormat) * 8;
+    }
+
     public static int getFrameSize(int channelCount, int audioFormat) {
         return channelCount * (getBytesPerSample(audioFormat));
     }

@@ -12,8 +12,8 @@ import android.util.Log;
 
 import com.t2m.npd.Task;
 import com.t2m.stream.StreamTask;
-import com.t2m.npd.node.AudioNode;
-import com.t2m.npd.node.CameraNode;
+import com.t2m.npd.node.process.AudioNode;
+import com.t2m.npd.node.process.CameraNode;
 
 public class StreamManager {
     private static final String TAG = StreamManager.class.getSimpleName();
@@ -77,7 +77,11 @@ public class StreamManager {
 
     public void release(Context context) {
         if (sConnection != null) {
-            context.unbindService(sConnection);
+            try {
+                context.unbindService(sConnection);
+            } catch (IllegalArgumentException e) {
+                // ignore. caused by service not bind.
+            }
         }
     }
 

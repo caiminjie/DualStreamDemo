@@ -1,4 +1,4 @@
-package com.t2m.npd.node;
+package com.t2m.npd.node.pipeline;
 
 import android.util.Log;
 import android.view.Surface;
@@ -6,6 +6,7 @@ import android.view.Surface;
 import com.t2m.npd.Node;
 import com.t2m.npd.Pipeline;
 import com.t2m.npd.data.SurfaceData;
+import com.t2m.npd.node.PipelineNode;
 import com.t2m.npd.pipeline.SimplePipeline;
 
 import java.io.IOException;
@@ -23,24 +24,25 @@ public class SurfaceNode extends PipelineNode<SurfaceData> {
 
         mType = type;
         mSurface = surface;
-        mPipeline = new SimplePipeline<SurfaceData>(mName + "#pipeline") {
-            @Override
-            protected SurfaceData onCreateData() {
-                return new SurfaceData();
-            }
+        mPipeline = new SimplePipeline<>(mName + "#pipeline",
+                new Pipeline.DataAdapter<SurfaceData>() {
+                    @Override
+                    public SurfaceData onCreateData() {
+                        return new SurfaceData();
+                    }
 
-            @Override
-            protected int onBindData(SurfaceData data) {
-                data.type = mType;
-                data.surface = mSurface;
-                return Node.RESULT_OK;
-            }
+                    @Override
+                    public int onBindData(SurfaceData data) {
+                        data.type = mType;
+                        data.surface = mSurface;
+                        return Node.RESULT_OK;
+                    }
 
-            @Override
-            protected void onReleaseData(SurfaceData data) {
-                stop();
-            }
-        };
+                    @Override
+                    public void onReleaseData(SurfaceData data) {
+                        mPipeline.stop();
+                    }
+                });
     }
 
     @Override

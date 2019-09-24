@@ -7,8 +7,8 @@ import android.view.Surface;
 import com.t2m.dualstream.Utils;
 import com.t2m.npd.Task;
 import com.t2m.npd.data.SurfaceData;
-import com.t2m.npd.node.CameraNode;
-import com.t2m.npd.node.SurfaceNode;
+import com.t2m.npd.node.process.CameraNode;
+import com.t2m.npd.node.pipeline.SurfaceNode;
 import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
 

@@ -4,6 +4,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 
 import com.t2m.npd.Data;
+import com.t2m.npd.Node;
 
 import java.nio.ByteBuffer;
 
@@ -49,5 +50,17 @@ public class MediaData extends Data {
     @SuppressWarnings("unused")
     public void clearFlags() {
         info.flags = 0;
+    }
+
+    public int write(byte[] buff, int offset, int len) {
+        buffer.clear();
+        buffer.put(buff, offset, len);
+        return Node.RESULT_OK;
+    }
+
+    @SuppressWarnings("unused")
+    public int read(byte[] buff, int offset, int len) {
+        buffer.get(buff, offset, len);
+        return Node.RESULT_OK;
     }
 }

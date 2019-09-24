@@ -1,4 +1,4 @@
-package com.t2m.npd.node;
+package com.t2m.npd.node.process;
 
 import android.Manifest;
 import android.content.Context;
@@ -24,6 +24,7 @@ import android.view.Surface;
 
 import com.t2m.npd.Node;
 import com.t2m.npd.data.SurfaceData;
+import com.t2m.npd.node.ProcessNode;
 
 import java.io.IOException;
 import java.util.ArrayList;
