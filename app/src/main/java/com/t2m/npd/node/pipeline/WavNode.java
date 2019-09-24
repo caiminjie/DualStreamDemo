@@ -7,7 +7,6 @@ import com.t2m.npd.data.MediaData;
 import com.t2m.npd.data.WavData;
 import com.t2m.npd.node.PipelineNode;
 import com.t2m.npd.pipeline.BufferedPipeline;
-import com.t2m.npd.pipeline.SimplePipeline;
 import com.t2m.npd.util.Utils;
 import com.t2m.npd.util.WavFileWriter;
 

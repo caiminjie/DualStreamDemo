@@ -43,9 +43,13 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
             },
             null);
 
-    private ProcessDataCallback<T> mProcessCallback;
-    public interface ProcessDataCallback<T extends Data> {
+    private OnReadyProcessCallback<T> mProcessCallback;
+    private OnCachedCallback<T> mCachedCallback;
+    public interface OnReadyProcessCallback<T extends Data> {
         int onReadyProcess(T data);
+    }
+    public interface OnCachedCallback<T extends Data> {
+        void onDataCached(T data);
     }
 
     private static class Queue<T extends Data> {
@@ -65,13 +69,14 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
     }
 
     public BufferedPipeline(String name, DataAdapter<T> adapter) {
-        this(name, adapter, data -> CB_ACCEPT);
+        this(name, adapter, null, null);
     }
 
-    public BufferedPipeline(String name, DataAdapter<T> adapter, ProcessDataCallback<T> callback) {
+    public BufferedPipeline(String name, DataAdapter<T> adapter, OnCachedCallback<T> cachedCallback, OnReadyProcessCallback<T> processCallback) {
         super(name, adapter);
 
-        mProcessCallback = callback;
+        mCachedCallback = cachedCallback;
+        mProcessCallback = processCallback;
         mBindDataRetryHelper = new RetrySleepHelper(mName + "#bind");
         mBlockDataRetryHelper = new RetrySleepHelper(mName + "#block");
         mWaitQueueRetryHelper = new RetrySleepHelper(mName + "#wait");
@@ -114,6 +119,11 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
 
                     // put data into queue
                     mQueue.push(data);
+
+                    // callback
+                    if (mCachedCallback != null) {
+                        mCachedCallback.onDataCached(data);
+                    }
                 }
 
                 Log.d(TAG, "[" + mName + "] ProducerThread end");

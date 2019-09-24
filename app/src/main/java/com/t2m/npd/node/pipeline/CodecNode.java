@@ -11,6 +11,7 @@ import com.t2m.npd.Pipeline;
 import com.t2m.npd.data.MediaData;
 import com.t2m.npd.data.SurfaceData;
 import com.t2m.npd.node.PipelineNode;
+import com.t2m.npd.pipeline.BufferedPipeline;
 import com.t2m.npd.pipeline.SimplePipeline;
 
 import java.io.IOException;
@@ -29,8 +30,11 @@ public class CodecNode extends PipelineNode<Data> {
     private Surface mSurface;
 
     private SimplePipeline<SurfaceData> mInPipelineSurface;
-    private SimplePipeline<MediaData> mInPipeline;
-    private SimplePipeline<MediaData> mOutPipeline;
+    private BufferedPipeline<MediaData> mInPipeline;
+    private BufferedPipeline<MediaData> mOutPipeline;
+
+    private boolean mEnableOutput = true;
+    private long mBlockDurationUs = 0;
 
     @SuppressWarnings("WeakerAccess")
     public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
@@ -68,7 +72,7 @@ public class CodecNode extends PipelineNode<Data> {
                         mInPipelineSurface.stop();
                     }
                 });
-        mInPipeline = new SimplePipeline<>(mName + "#InPipeline",
+        mInPipeline = new BufferedPipeline<>(mName + "#InPipeline",
                 new Pipeline.DataAdapter<MediaData>() {
                     private int id = hashCode();
 
@@ -89,7 +93,7 @@ public class CodecNode extends PipelineNode<Data> {
                 });
 
         // create output pipeline
-        mOutPipeline = new SimplePipeline<>(mName + "#OutPipeline",
+        mOutPipeline = new BufferedPipeline<>(mName + "#OutPipeline",
                 new Pipeline.DataAdapter<MediaData>() {
                     private int id = hashCode();
 
@@ -107,7 +111,9 @@ public class CodecNode extends PipelineNode<Data> {
                     public void onReleaseData(MediaData data) {
                         CodecNode.this.releaseOutputData(data);
                     }
-                });
+                },
+                this::onOutDataCached,
+                this::onOutDataReadyProcess);
     }
 
     @Override
@@ -249,10 +255,46 @@ public class CodecNode extends PipelineNode<Data> {
         }
     }
 
+    private long mLatestPresentationTimeUs = -1;
+    private int mLastCbStatus = BufferedPipeline.CB_ACCEPT;
+    private void onOutDataCached(MediaData data) {
+        mLatestPresentationTimeUs = data.info.presentationTimeUs;
+    }
+
+    private int onOutDataReadyProcess(MediaData data) {
+        if (mEnableOutput) {
+            return BufferedPipeline.CB_ACCEPT;
+        } else if (mBlockDurationUs > 0) {
+            // if last status is CB_DROP, now should drop all frames that is not key frame
+            if (mLastCbStatus == BufferedPipeline.CB_DROP && !data.isKeyFrame()) {
+                return BufferedPipeline.CB_DROP;
+            }
+
+            // check whether cached data is over duration limit
+            long delta = data.info.presentationTimeUs - mLatestPresentationTimeUs;
+            if (delta > mBlockDurationUs) {
+                mLastCbStatus = BufferedPipeline.CB_DROP;  // too much cached, drop data.
+            } else {
+                mLastCbStatus = BufferedPipeline.CB_WAIT;  // limit not reach, keep block
+            }
+            return mLastCbStatus;
+        } else {
+            return BufferedPipeline.CB_DROP;
+        }
+    }
+
     private void releaseOutputData(MediaData data) {
         if (data.index > 0) {
             mCodec.releaseOutputBuffer(data.index, false);
             data.index = -1;
         }
+    }
+
+    public void enableOutput(boolean enable) {
+        mEnableOutput = enable;
+    }
+
+    public void setBlockDurationUs(long durationUs) {
+        mBlockDurationUs = durationUs;
     }
 }

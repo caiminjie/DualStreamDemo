@@ -52,6 +52,10 @@ public class MediaData extends Data {
         info.flags = 0;
     }
 
+    public boolean isKeyFrame() {
+        return (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0;
+    }
+
     public int write(byte[] buff, int offset, int len) {
         buffer.clear();
         buffer.put(buff, offset, len);
