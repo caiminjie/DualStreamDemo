@@ -34,6 +34,13 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
     private int mVideoCodecType = CODEC_H264;
     private String mPath = null;
 
+    private CodecNode mVideoEncoderNode = null;
+    private CodecNode mAudioEncoderNode = null;
+    private MediaMuxerNode mMuxerNode = null;
+
+    private boolean mEnableOutput = true;
+    private long mBlockDurationUs = 0;
+
     public VideoRecordStream(String name, CameraNode cameraNode, AudioNode audioNode) {
         super(name);
 
@@ -69,25 +76,31 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         }
 
         // create node
-        CodecNode videoEncoderNode = (mVideoCodecType == CODEC_H265) ?
+        mVideoEncoderNode = (mVideoCodecType == CODEC_H265) ?
                 new H265EncoderNode(subName("VE265"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate) :
                 new H264EncoderNode(subName("VE264"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate);
-        M4aEncoderNode audioEncoderNode = new M4aEncoderNode(subName("AE"));
-        MediaMuxerNode muxerNode = new MediaMuxerNode(subName("MX"), mPath, mCameraNode.getSensorOrientation());
+        mAudioEncoderNode = new M4aEncoderNode(subName("AE"));
+        mMuxerNode = new MediaMuxerNode(subName("MX"), mPath, mCameraNode.getSensorOrientation());
+
+        // config node
+        mVideoEncoderNode.enableOutput(mEnableOutput);
+        mAudioEncoderNode.enableOutput(mEnableOutput);
+        mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
+        mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
 
         // init pipeline
-        videoEncoderNode.inputPipelineSurface().addNode(mCameraNode);
-        videoEncoderNode.outputPipeline().addNode(muxerNode);
-        audioEncoderNode.inputPipeline().addNode(mAudioNode);
-        audioEncoderNode.outputPipeline().addNode(muxerNode);
+        mVideoEncoderNode.inputPipelineSurface().addNode(mCameraNode);
+        mVideoEncoderNode.outputPipeline().addNode(mMuxerNode);
+        mAudioEncoderNode.inputPipeline().addNode(mAudioNode);
+        mAudioEncoderNode.outputPipeline().addNode(mMuxerNode);
 
         // create task
         task
                 .addNode(mCameraNode)
                 .addNode(mAudioNode)
-                .addNode(videoEncoderNode)
-                .addNode(audioEncoderNode)
-                .addNode(muxerNode);
+                .addNode(mVideoEncoderNode)
+                .addNode(mAudioEncoderNode)
+                .addNode(mMuxerNode);
 
         // return task
         return true;
@@ -141,5 +154,33 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
     public VideoRecordStream setPath(String path) {
         mPath = path;
         return this;
+    }
+
+    public void enableOutput(boolean enable) {
+        mEnableOutput = enable;
+        if (mVideoEncoderNode != null) {
+            mVideoEncoderNode.enableOutput(mEnableOutput);
+        }
+        if (mAudioEncoderNode != null) {
+            mAudioEncoderNode.enableOutput(mEnableOutput);
+        }
+    }
+
+    public void setBlockDurationUs(long durationUs) {
+        mBlockDurationUs = durationUs;
+        if (mVideoEncoderNode != null) {
+            mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
+        }
+        if (mAudioEncoderNode != null) {
+            mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
+        }
+    }
+
+    public void setBlockDurationMs(long durationMs) {
+        setBlockDurationUs(durationMs * 1000);
+    }
+
+    public void newSegment(String path) {
+        mMuxerNode.newSegment(path);
     }
 }

@@ -6,7 +6,7 @@ import com.t2m.npd.Pipeline;
 import com.t2m.npd.data.MediaData;
 import com.t2m.npd.data.WavData;
 import com.t2m.npd.node.PipelineNode;
-import com.t2m.npd.pipeline.BufferedPipeline;
+import com.t2m.npd.pipeline.SimplePipeline;
 import com.t2m.npd.util.Utils;
 import com.t2m.npd.util.WavFileWriter;
 
@@ -34,7 +34,8 @@ public class WavNode extends PipelineNode<MediaData> {
         mChannelCount = channelCount;
         mAudioFormat = audioFormat;
 
-        mPipeline = new BufferedPipeline<>(
+        // If you want use BufferedPipeline, you should block data bind until previous data is released. Or it will cause memory leak.
+        mPipeline = new SimplePipeline<>(
                 mName + "#Pipeline",
                 new Pipeline.DataAdapter<MediaData>() {
                     private int id = this.hashCode();

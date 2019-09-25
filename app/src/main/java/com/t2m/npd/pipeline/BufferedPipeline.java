@@ -21,7 +21,7 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
 
     private final List<ProcessNode<T>> mList = new ArrayList<>();
 
-    private Queue<T> mQueue = new Queue<>();
+    private final Queue<T> mQueue = new Queue<>();
 
     private Thread mProducerThread = null;
     private Thread mConsumerThread = null;
@@ -62,6 +62,12 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
         private T pop() {
             synchronized (mQueue) {
                 return mQueue.pollFirst();
+            }
+        }
+
+        private void clear() {
+            synchronized (mQueue) {
+                mQueue.clear();
             }
         }
     }
@@ -116,6 +122,9 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
 
                     // put data into queue
                     mQueue.push(data);
+                    synchronized (mQueue) {
+                        mQueue.notifyAll();
+                    }
 
                     // callback
                     if (mCachedCallback != null) {
@@ -150,13 +159,17 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                     T data = null;
 
                     // fetch a data from queue
-                    mWaitQueueRetryHelper.begin();
-                    while (!Thread.currentThread().isInterrupted() && (data = mQueue.pop()) == null) {
-                        mWaitQueueRetryHelper.sleep();
-                    }
-                    mWaitQueueRetryHelper.end();
-                    if (data == null) {
-                        return; // here thread is interrupted. just return.
+                    while (!Thread.currentThread().isInterrupted() && data == null) {
+                        synchronized (mQueue) {
+                            if ((data = mQueue.pop()) == null) {
+                                try {
+                                    mQueue.wait();
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, "wait queue failed due to interrupt.");
+                                    return; // here thread is interrupted. just return.
+                                }
+                            }
+                        }
                     }
 
                     // callback
@@ -203,6 +216,7 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
     public int stop() {
         stopProducerThread();
         stopConsumerThread();
+        mQueue.clear();
         return Node.RESULT_OK;
     }
 

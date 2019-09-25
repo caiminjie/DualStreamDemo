@@ -22,18 +22,17 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
     private final Object mWriterLock = new Object();
 
     private MediaMuxer mMuxer = null;
+    private final Object mMuxerLock = new Object();
     private String mPath;
     private int mOrientation;
 
     private int mAudioTrackIndex = -1;
     private int mVideoTrackIndex = -1;
-    private boolean mIsAudioConfigured = false;
-    private boolean mIsVideoConfigured = false;
     private long prevOutputPTSUs = 0;
     @SuppressWarnings("FieldCanBeLocal")
-    private MediaFormat mAudioFormat;
+    private MediaFormat mAudioFormat = null;
     @SuppressWarnings("FieldCanBeLocal")
-    private MediaFormat mVideoFormat;
+    private MediaFormat mVideoFormat = null;
 
     private boolean mMuxStarted = false;
 
@@ -44,15 +43,43 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
         mOrientation = orientation;
     }
 
+    private MediaMuxer getMuxer() {
+        synchronized (mMuxerLock) {
+            if (mPath != null) {
+                // release old if necessary
+                if (mMuxer != null) {
+                    mMuxer.stop();
+                    mMuxer.release();
+                }
+
+                // delete fle if already exists
+                File file = new File(mPath);
+                if (file.exists()) {
+                    file.deleteOnExit();
+                }
+
+                // create new
+                try {
+                    mMuxer = new MediaMuxer(mPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+                    mMuxer.setOrientationHint(mOrientation);
+                    mVideoTrackIndex = -1;
+                    mAudioTrackIndex = -1;
+                    mMuxStarted = false;
+                } catch (IOException e) {
+                    Log.e(TAG, "create muxer failed.", e);
+                    mMuxer = null;
+                }
+
+                mPath = null;
+            }
+
+            return mMuxer;
+        }
+    }
+
     @Override
     protected void onOpen() throws IOException {
-        File file = new File(mPath);
-        if (file.exists()) {
-            file.deleteOnExit();
-        }
-
-        mMuxer = new MediaMuxer(mPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-        mMuxer.setOrientationHint(mOrientation);
+        // do nothing
     }
 
     @Override
@@ -60,8 +87,6 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
         mAudioTrackIndex = -1;
         mVideoTrackIndex = -1;
         mMuxStarted = false;
-        mIsAudioConfigured = false;
-        mIsVideoConfigured = false;
 
         if (mMuxer != null) {
             try {
@@ -94,19 +119,31 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
                 return RESULT_NOT_OPEN;
             }
 
+            // get muxer. new muxer will be received if path changed (new segment)
+            MediaMuxer muxer = getMuxer();
+            if (muxer == null) {
+                return RESULT_ERROR;
+            }
+
+            // get format
             if (data.isConfig()) {
                 mAudioFormat = data.format;
-                mAudioTrackIndex = mMuxer.addTrack(mAudioFormat);
-                mIsAudioConfigured = true;
+            }
 
-                Log.d(TAG, "[" + mName + "] received audio config data");
-                if (!mMuxStarted && mIsVideoConfigured && mIsAudioConfigured) {
-                    mMuxer.start();
-                    mMuxStarted = true;
-                }
-                return RESULT_OK;
-            } else {
-                if (mMuxStarted && mIsAudioConfigured && mIsVideoConfigured) {
+            // config track
+            if (mAudioFormat != null && mAudioTrackIndex < 0) {
+                mAudioTrackIndex = muxer.addTrack(mAudioFormat);
+            }
+
+            // start muxer if necessary
+            if (!mMuxStarted && mAudioTrackIndex >= 0 && mVideoTrackIndex >= 0) {
+                muxer.start();
+                mMuxStarted = true;
+            }
+
+            // write sample if configured
+            if (mMuxStarted) {
+                if (!data.isConfig()) {
                     ByteBuffer buffer = data.buffer;
                     assert buffer != null;
                     MediaCodec.BufferInfo info = data.info;
@@ -115,14 +152,14 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                     if (info.size > 0) {
                         info.presentationTimeUs = getPTSUs();
-                        mMuxer.writeSampleData(mAudioTrackIndex, buffer, info);
+                        muxer.writeSampleData(mAudioTrackIndex, buffer, info);
                         prevOutputPTSUs = info.presentationTimeUs;
                     }
-                    return RESULT_OK;
-                } else {
-                    Log.w(TAG, "not configured, drop this sample");
-                    return RESULT_OK;
                 }
+                return RESULT_OK;
+            } else {
+                Log.w(TAG, "not configured, drop this audio sample");
+                return RESULT_OK;
             }
         }
     }
@@ -134,19 +171,31 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
                 return RESULT_NOT_OPEN;
             }
 
+            // get muxer. new muxer will be received if path changed (new segment)
+            MediaMuxer muxer = getMuxer();
+            if (muxer == null) {
+                return RESULT_ERROR;
+            }
+
+            // get format
             if (data.isConfig()) {
                 mVideoFormat = data.format;
-                mVideoTrackIndex = mMuxer.addTrack(mVideoFormat);
-                mIsVideoConfigured = true;
+            }
 
-                Log.d(TAG, "[" + mName + "] received video config data");
-                if (!mMuxStarted && mIsVideoConfigured && mIsAudioConfigured) {
-                    mMuxer.start();
-                    mMuxStarted = true;
-                }
-                return RESULT_OK;
-            } else {
-                if (mMuxStarted && mIsAudioConfigured && mIsVideoConfigured) {
+            // config track
+            if (mVideoFormat != null && mVideoTrackIndex < 0) {
+                mVideoTrackIndex = muxer.addTrack(mVideoFormat);
+            }
+
+            // start muxer if necessary
+            if (!mMuxStarted && mAudioTrackIndex >= 0 && mVideoTrackIndex >= 0) {
+                muxer.start();
+                mMuxStarted = true;
+            }
+
+            // write sample if configured
+            if (mMuxStarted) {
+                if (!data.isConfig()) {
                     ByteBuffer buffer = data.buffer;
                     assert buffer != null;
                     MediaCodec.BufferInfo info = data.info;
@@ -158,11 +207,11 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
                         mMuxer.writeSampleData(mVideoTrackIndex, buffer, info);
                         prevOutputPTSUs = info.presentationTimeUs;
                     }
-                    return RESULT_OK;
-                } else {
-                    Log.w(TAG, "[" + mName + "] not configured, drop this sample");
-                    return RESULT_OK;
                 }
+                return RESULT_OK;
+            } else {
+                Log.w(TAG, "[" + mName + "] not configured, drop this video sample");
+                return RESULT_OK;
             }
         }
     }
@@ -179,5 +228,11 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
         if (result < prevOutputPTSUs)
             result = (prevOutputPTSUs - result) + result;
         return result;
+    }
+
+    public void newSegment(String path) {
+        synchronized (mMuxerLock) {
+            mPath = path;
+        }
     }
 }
