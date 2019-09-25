@@ -17,8 +17,7 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
     private static final String TAG = BufferedPipeline.class.getSimpleName();
 
     public static final int CB_ACCEPT = 0;
-    public static final int CB_WAIT = 1;
-    public static final int CB_DROP = 2;
+    public static final int CB_DROP = 1;
 
     private final List<ProcessNode<T>> mList = new ArrayList<>();
 
@@ -30,7 +29,6 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
     private final Object mConsumerThreadLock = new Object();
 
     private RetrySleepHelper mBindDataRetryHelper;
-    private RetrySleepHelper mBlockDataRetryHelper;
     private RetrySleepHelper mWaitQueueRetryHelper;
     private final Cache<T> mCache = new Cache<>(
             "Pipeline.Cache",
@@ -78,7 +76,6 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
         mCachedCallback = cachedCallback;
         mProcessCallback = processCallback;
         mBindDataRetryHelper = new RetrySleepHelper(mName + "#bind");
-        mBlockDataRetryHelper = new RetrySleepHelper(mName + "#block");
         mWaitQueueRetryHelper = new RetrySleepHelper(mName + "#wait");
     }
 
@@ -135,6 +132,7 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
         }
     }
 
+    @SuppressWarnings("StatementWithEmptyBody")
     private int startConsumerThread() {
         synchronized (mConsumerThreadLock) {
             Log.d(TAG, "[" + mName + "] startConsumerThread()# begin");
@@ -161,32 +159,28 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                         return; // here thread is interrupted. just return.
                     }
 
-                    // process callback
+                    // callback
                     int cb = CB_ACCEPT;
                     if (mProcessCallback != null) {
-                        mBlockDataRetryHelper.begin();
-                        while (!Thread.currentThread().isInterrupted() && (cb = mProcessCallback.onReadyProcess(data)) == CB_WAIT) {
-                            mBlockDataRetryHelper.sleep();
-                        }
-                        mBlockDataRetryHelper.end();
+                        cb = mProcessCallback.onReadyProcess(data);
                     }
 
-                    // bind data
-                    if (!Thread.currentThread().isInterrupted()) {
-                        if (cb == CB_ACCEPT) {
-                            // process data with outgoing node
-                            for (ProcessNode<T> node : getNodeList()) {
-                                node.retryBegin();
-                                while ((result = node.process(data)) == Node.RESULT_RETRY) {
-                                    node.retrySleep();
-                                }
-                                node.retryEnd();
+                    // process callback result
+                    if (cb == CB_ACCEPT) {
+                        // process data with process nodes
+                        for (ProcessNode<T> node : getNodeList()) {
+                            node.retryBegin();
+                            while (!Thread.currentThread().isInterrupted() && (result = node.process(data)) == Node.RESULT_RETRY) {
+                                node.retrySleep();
                             }
-                        } else if (cb == CB_DROP) {
-                            // drop data. do nothing here
-                        } else {
-                            result = Node.RESULT_ERROR;
+                            node.retryEnd();
                         }
+                    } else if (cb == CB_DROP) {
+                        // drop data. do nothing here
+                    } else {
+                        // should not reach here
+                        Log.e(TAG, "Should not reach here! Check your OnReadyProcessCallback, it returned an unexpected result.");
+                        result = Node.RESULT_ERROR;
                     }
 
                     // release data

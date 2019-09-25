@@ -255,29 +255,44 @@ public class CodecNode extends PipelineNode<Data> {
         }
     }
 
+    private final Object mBlockLock = new Object();
     private long mLatestPresentationTimeUs = -1;
-    private int mLastCbStatus = BufferedPipeline.CB_ACCEPT;
+    private boolean mDropFrames = false;
     private void onOutDataCached(MediaData data) {
         mLatestPresentationTimeUs = data.info.presentationTimeUs;
+
+        synchronized (mBlockLock) {
+            mBlockLock.notifyAll();
+        }
     }
 
     private int onOutDataReadyProcess(MediaData data) {
         if (mEnableOutput) {
             return BufferedPipeline.CB_ACCEPT;
         } else if (mBlockDurationUs > 0) {
-            // if last status is CB_DROP, now should drop all frames that is not key frame
-            if (mLastCbStatus == BufferedPipeline.CB_DROP && !data.isKeyFrame()) {
-                return BufferedPipeline.CB_DROP;
+            // drop non-key-frames
+            if (mDropFrames) {
+                if (!data.isKeyFrame()) {  // drop frames until we get a key frame.
+                    return BufferedPipeline.CB_DROP;
+                } else {
+                    mDropFrames = false; // it's key frame, stop drop
+                }
             }
 
-            // check whether cached data is over duration limit
-            long delta = data.info.presentationTimeUs - mLatestPresentationTimeUs;
-            if (delta > mBlockDurationUs) {
-                mLastCbStatus = BufferedPipeline.CB_DROP;  // too much cached, drop data.
-            } else {
-                mLastCbStatus = BufferedPipeline.CB_WAIT;  // limit not reach, keep block
+            // block until buffered data duration is grater than max duration allowed
+            while (!Thread.currentThread().isInterrupted() && (mLatestPresentationTimeUs - data.info.presentationTimeUs) <= mBlockDurationUs) {
+                synchronized (mBlockLock) {
+                    try {
+                        mBlockLock.wait();
+                    } catch (InterruptedException e) {
+                        Log.w(TAG, "onOutDataReadyProcess()# wait for block interrupted", e); // TODO remove exception log later
+                    }
+                }
             }
-            return mLastCbStatus;
+
+            // now there's too much data in cache, drop until not key frame
+            mDropFrames = true;
+            return BufferedPipeline.CB_DROP;
         } else {
             return BufferedPipeline.CB_DROP;
         }
@@ -292,9 +307,15 @@ public class CodecNode extends PipelineNode<Data> {
 
     public void enableOutput(boolean enable) {
         mEnableOutput = enable;
+        synchronized (mBlockLock) {
+            mBlockLock.notifyAll();
+        }
     }
 
     public void setBlockDurationUs(long durationUs) {
         mBlockDurationUs = durationUs;
+        synchronized (mBlockLock) {
+            mBlockLock.notifyAll();
+        }
     }
 }
