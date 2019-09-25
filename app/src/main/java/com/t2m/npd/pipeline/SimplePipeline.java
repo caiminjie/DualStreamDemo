@@ -66,11 +66,11 @@ public class SimplePipeline<T extends Data> extends Pipeline<T> {
                     if (result == Node.RESULT_OK) {
                         // process data with outgoing node
                         for (ProcessNode<T> node : getNodeList()) {
-                            node.retryBegin();
-                            while ((result = node.process(data)) == Node.RESULT_RETRY) {
-                                node.retrySleep();
+                            result = node.processWithRetry(data);
+                            if (result != Node.RESULT_OK) {
+                                Log.e(TAG, "get error code: [" + result + "] on Node: [" + node + "]");
+                                break;
                             }
-                            node.retryEnd();
                         }
                     }
 

@@ -10,19 +10,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @SuppressWarnings("unused")
-public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
+public class IOBufferedPipeline<T extends Data> extends BufferedPipeline<T> {
     private final List<ProcessNode<T>> mOutgoingList = new ArrayList<>();
     private final List<ProcessNode<T>> mIncomingList = new ArrayList<>();
     private List<ProcessNode<T>> mList;
     private boolean mListDirty = true;
 
     @SuppressWarnings("unused")
-    public InOutPipeline(String name, DataAdapter<T> adapter) {
-        super(name, adapter);
+    public IOBufferedPipeline(String name, DataAdapter<T> adapter) {
+        this(name, adapter, null, null);
     }
 
-    @SuppressWarnings("unused")
-    public InOutPipeline<T> addOutgoingNode(ProcessNode<T> node) {
+    public IOBufferedPipeline(String name, DataAdapter<T> adapter, OnCachedCallback<T> cachedCallback, OnReadyProcessCallback<T> processCallback) {
+        super(name, adapter, cachedCallback, processCallback);
+    }
+
+        @SuppressWarnings("unused")
+    public IOBufferedPipeline<T> addOutgoingNode(ProcessNode<T> node) {
         synchronized (mOutgoingList) {
             mOutgoingList.add(node);
             mListDirty = true;
@@ -31,7 +35,7 @@ public abstract class InOutPipeline<T extends Data> extends Pipeline<T> {
     }
 
     @SuppressWarnings("WeakerAccess | UnusedReturnValue")
-    public InOutPipeline<T> addIncomingNode(ProcessNode<T> node) {
+    public IOBufferedPipeline<T> addIncomingNode(ProcessNode<T> node) {
         synchronized (mIncomingList) {
             mIncomingList.add(node);
             mListDirty = true;

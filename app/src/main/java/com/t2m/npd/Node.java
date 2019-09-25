@@ -1,6 +1,6 @@
 package com.t2m.npd;
 
-import com.t2m.npd.util.RetrySleepHelper;
+import android.support.annotation.NonNull;
 
 import java.io.IOException;
 
@@ -8,7 +8,6 @@ public abstract class Node {
     private static final String TAG = Node.class.getSimpleName();
 
     public static final int RESULT_OK = 0;
-    @SuppressWarnings("WeakerAccess")
     public static final int RESULT_RETRY = 1;
     @SuppressWarnings("WeakerAccess")
     public static final int RESULT_NOT_OPEN = 2;
@@ -28,11 +27,15 @@ public abstract class Node {
 
     protected int mStatus = STATUS_NOT_OPENED; // new for status control. old is mIsOpened
 
-    private RetrySleepHelper mRetryHelper;
 
     public Node(String name) {
         mName = name;
-        mRetryHelper = new RetrySleepHelper(mName + "#process");
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return mName + "#" + hashCode();
     }
 
     public Node open() throws IOException {
@@ -52,6 +55,7 @@ public abstract class Node {
         }
     }
 
+    @SuppressWarnings("UnusedReturnValue | WeakerAccess")
     public Node close() throws IOException {
         synchronized (mOpenLock) {
             android.util.Log.d(TAG, "[" + mName + "] close()# begin");
@@ -75,18 +79,6 @@ public abstract class Node {
             return mIsOpened;
             // return mStatus == STATUS_OPENED || mStatus == STATUS_OPENING; // TODO switch later
         }
-    }
-
-    public void retryBegin() {
-        mRetryHelper.begin();
-    }
-
-    public void retryEnd() {
-        mRetryHelper.end();
-    }
-
-    public void retrySleep() {
-        mRetryHelper.sleep();
     }
 
     protected abstract void onOpen() throws IOException;

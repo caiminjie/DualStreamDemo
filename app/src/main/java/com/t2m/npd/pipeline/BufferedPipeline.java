@@ -169,11 +169,11 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                     if (cb == CB_ACCEPT) {
                         // process data with process nodes
                         for (ProcessNode<T> node : getNodeList()) {
-                            node.retryBegin();
-                            while (!Thread.currentThread().isInterrupted() && (result = node.process(data)) == Node.RESULT_RETRY) {
-                                node.retrySleep();
+                            result = node.processWithRetry(data);
+                            if (result != Node.RESULT_OK) {
+                                Log.e(TAG, "get error code: [" + result + "] on Node: [" + node + "]");
+                                break;
                             }
-                            node.retryEnd();
                         }
                     } else if (cb == CB_DROP) {
                         // drop data. do nothing here
