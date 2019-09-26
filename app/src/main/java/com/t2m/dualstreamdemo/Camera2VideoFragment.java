@@ -48,6 +48,7 @@ import com.t2m.dualstream.Utils;
 import com.t2m.npd.node.process.AudioNode;
 import com.t2m.stream.StreamTask;
 import com.t2m.npd.node.process.CameraNode;
+import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.VideoRecordStream;
 
 import java.io.File;
@@ -90,6 +91,9 @@ public class Camera2VideoFragment extends Fragment
     private String mCameraId = null;
     private Size mPreviewSize;
     private StreamManager mStreamManager;
+
+    private VideoRecordStream mVideoRecordStream = null;
+    private AudioRecordStream mAudioRecordStream = null;
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
@@ -151,13 +155,12 @@ public class Camera2VideoFragment extends Fragment
                 startVideoAudioRecord();
             }
         });
-        view.findViewById(R.id.info).setOnClickListener(v -> {
-            Activity activity = getActivity();
-            if (null != activity) {
-                new AlertDialog.Builder(activity)
-                        .setMessage(R.string.intro_message)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show();
+        view.findViewById(R.id.segment).setOnClickListener(v -> {
+            if (mVideoRecordStream != null) {
+                mVideoRecordStream.newSegment(getOutputPath("mp4"));
+            }
+            if (mAudioRecordStream != null) {
+                mAudioRecordStream.newSegment(getOutputPath("wav"));
             }
         });
     }
@@ -196,6 +199,10 @@ public class Camera2VideoFragment extends Fragment
         task.addPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
                 .setPreviewSize(mPreviewSize);
+
+        // config
+        mVideoRecordStream = null;
+        mAudioRecordStream = null;
 
         // start task
         mStreamManager.startTask(
@@ -244,17 +251,21 @@ public class Camera2VideoFragment extends Fragment
         task.addPreviewStream("Preview")
                 .setPreviewSurface(createPreviewSurface())
                 .setPreviewSize(mPreviewSize);
-        task.addVideoRecordStream("Video")
+        mVideoRecordStream = task.addVideoRecordStream("Video")
                 .setPreferredVideoSize(1080, 16, 9)
                 .setVideoCodecType(VideoRecordStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
-                .setPath("/sdcard/DCIM/a.mp4");
-        task.addAudioRecordStream("Audio")
+                .setPath(getOutputPath("mp4"));
+        mAudioRecordStream = task.addAudioRecordStream("Audio")
                 .setAudioFormat(audioNode.getAudioFormat())
                 .setChannelCount(audioNode.getChannelCount())
                 .setSampleRate(audioNode.getSampleRate())
-                .setPath("/sdcard/DCIM/b.wav");
+                .setPath(getOutputPath("wav"));
+
+        // config
+        mVideoRecordStream.setBlockDurationUs(10 * 1000);
+        mVideoRecordStream.enableOutput(true);
 
         // start task
         mStreamManager.startTask(
@@ -359,10 +370,10 @@ public class Camera2VideoFragment extends Fragment
         return true;
     }
 
-    private File getVideoFile(Context context) {
-        File outputFile = new File(context.getExternalFilesDir(null), "/"+System.currentTimeMillis() + ".mp4");
-        Log.d(TAG, "getVideoFile: " + outputFile.toString());
-        return outputFile;
+    private String getOutputPath(String ext) {
+        File file;
+        while ((file = new File("/sdcard/DCIM/" + System.currentTimeMillis() + "." + ext)).exists());
+        return file.getAbsolutePath();
     }
 
     /**

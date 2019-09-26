@@ -312,10 +312,18 @@ public class CodecNode extends PipelineNode<Data> {
         }
     }
 
+    public boolean enableOutput() {
+        return mEnableOutput;
+    }
+
     public void setBlockDurationUs(long durationUs) {
         mBlockDurationUs = durationUs;
         synchronized (mBlockLock) {
             mBlockLock.notifyAll();
         }
+    }
+
+    public long getBlockDurationUs() {
+        return mBlockDurationUs;
     }
 }

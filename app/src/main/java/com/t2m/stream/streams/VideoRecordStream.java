@@ -166,6 +166,10 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         }
     }
 
+    public boolean enableOutput() {
+        return mEnableOutput;
+    }
+
     public void setBlockDurationUs(long durationUs) {
         mBlockDurationUs = durationUs;
         if (mVideoEncoderNode != null) {
@@ -176,8 +180,16 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         }
     }
 
+    public long getBlockDurationUs() {
+        return mBlockDurationUs;
+    }
+
     public void setBlockDurationMs(long durationMs) {
         setBlockDurationUs(durationMs * 1000);
+    }
+
+    public long getBlockDurationMs() {
+        return mBlockDurationUs / 1000;
     }
 
     public void newSegment(String path) {
