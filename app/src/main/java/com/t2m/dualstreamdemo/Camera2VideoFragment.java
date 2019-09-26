@@ -146,13 +146,13 @@ public class Camera2VideoFragment extends Fragment
                 return;
             }
 
-            if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING) {
+            if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mVideoRecordStream.enableOutput()) {
                 ((TextView) v).setText(R.string.record);
                 startPreview();
             } else {
                 ((TextView) v).setText(R.string.stop);
                 //startDualVideoRecord();
-                startVideoAudioRecord();
+                startVideoAudioRecord(false);
             }
         });
         view.findViewById(R.id.segment).setOnClickListener(v -> {
@@ -162,6 +162,9 @@ public class Camera2VideoFragment extends Fragment
             if (mAudioRecordStream != null) {
                 mAudioRecordStream.newSegment(getOutputPath("wav"));
             }
+        });
+        view.findViewById(R.id.prerecord).setOnClickListener(v -> {
+            startVideoAudioRecord(true);
         });
     }
 
@@ -241,38 +244,46 @@ public class Camera2VideoFragment extends Fragment
                 task);
     }
 
-    private void startVideoAudioRecord() {
-        AudioNode audioNode = mStreamManager.getAudioNode();
+    private void startVideoAudioRecord(boolean isPreRecord) {
+        int status = mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND);
+        if (status == StreamManager.STATUS_RECORDING) {
+            if (mVideoRecordStream.enableOutput() == isPreRecord) {
+                mVideoRecordStream.enableOutput(!isPreRecord);
+            }
+        } else {
 
-        // create task
-        StreamTask task = mStreamManager.createStreamTask("DualVideo");
+            AudioNode audioNode = mStreamManager.getAudioNode();
 
-        // config task
-        task.addPreviewStream("Preview")
-                .setPreviewSurface(createPreviewSurface())
-                .setPreviewSize(mPreviewSize);
-        mVideoRecordStream = task.addVideoRecordStream("Video")
-                .setPreferredVideoSize(1080, 16, 9)
-                .setVideoCodecType(VideoRecordStream.CODEC_H264)
-                .setBitRate(10000000)
-                .setFrameRate(30)
-                .setPath(getOutputPath("mp4"));
-        mAudioRecordStream = task.addAudioRecordStream("Audio")
-                .setAudioFormat(audioNode.getAudioFormat())
-                .setChannelCount(audioNode.getChannelCount())
-                .setSampleRate(audioNode.getSampleRate())
-                .setPath(getOutputPath("wav"));
+            // create task
+            StreamTask task = mStreamManager.createStreamTask("DualVideo");
 
-        // config
-        mVideoRecordStream.setBlockDurationUs(10 * 1000);
-        mVideoRecordStream.enableOutput(true);
+            // config task
+            task.addPreviewStream("Preview")
+                    .setPreviewSurface(createPreviewSurface())
+                    .setPreviewSize(mPreviewSize);
+            mVideoRecordStream = task.addVideoRecordStream("Video")
+                    .setPreferredVideoSize(1080, 16, 9)
+                    .setVideoCodecType(VideoRecordStream.CODEC_H264)
+                    .setBitRate(10000000)
+                    .setFrameRate(30)
+                    .setPath(getOutputPath("mp4"));
+            mAudioRecordStream = task.addAudioRecordStream("Audio")
+                    .setAudioFormat(audioNode.getAudioFormat())
+                    .setChannelCount(audioNode.getChannelCount())
+                    .setSampleRate(audioNode.getSampleRate())
+                    .setPath(getOutputPath("wav"));
 
-        // start task
-        mStreamManager.startTask(
-                StreamManager.CHANNEL_BACKGROUND,
-                StreamManager.STATUS_RECORDING,
-                true,
-                task);
+            // config
+            mVideoRecordStream.setBlockDurationMs(10 * 1000);
+            mVideoRecordStream.enableOutput(!isPreRecord);
+
+            // start task
+            mStreamManager.startTask(
+                    StreamManager.CHANNEL_BACKGROUND,
+                    StreamManager.STATUS_RECORDING,
+                    true,
+                    task);
+        }
     }
 
     private void onOpenCamera() {

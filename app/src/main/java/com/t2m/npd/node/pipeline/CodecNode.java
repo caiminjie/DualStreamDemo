@@ -261,6 +261,7 @@ public class CodecNode extends PipelineNode<Data> {
     private void onOutDataCached(MediaData data) {
         mLatestPresentationTimeUs = data.info.presentationTimeUs;
 
+        //Log.i("==MyTest==", "[" + mName + "] onOutDataCached()#");
         synchronized (mBlockLock) {
             mBlockLock.notifyAll();
         }
@@ -281,6 +282,7 @@ public class CodecNode extends PipelineNode<Data> {
 
             // block until buffered data duration is grater than max duration allowed
             while (!Thread.currentThread().isInterrupted() && (mLatestPresentationTimeUs - data.info.presentationTimeUs) <= mBlockDurationUs) {
+                //Log.i("==MyTest==", "[" + mName + "] onOutDataReadyProcess()# " + (mLatestPresentationTimeUs - data.info.presentationTimeUs) + "/" + mBlockDurationUs);
                 synchronized (mBlockLock) {
                     try {
                         mBlockLock.wait();
