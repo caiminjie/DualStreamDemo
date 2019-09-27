@@ -13,8 +13,11 @@ import com.t2m.npd.data.SurfaceData;
 import com.t2m.npd.node.PipelineNode;
 import com.t2m.npd.pipeline.BufferedPipeline;
 import com.t2m.npd.pipeline.SimplePipeline;
+import com.t2m.npd.util.BufferCache;
 
 import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.security.InvalidParameterException;
 
 /**
@@ -33,8 +36,14 @@ public class CodecNode extends PipelineNode<Data> {
     private BufferedPipeline<MediaData> mInPipeline;
     private BufferedPipeline<MediaData> mOutPipeline;
 
+    private boolean mAddConfigData = false;
     private boolean mEnableOutput = true;
     private long mBlockDurationUs = 0;
+
+    private BufferCache<ByteBuffer> mBlockDataCache;
+    private final Object mBlockLock = new Object();
+    private long mLatestPresentationTimeUs = -1;
+    private boolean mDropFrames = false;
 
     @SuppressWarnings("WeakerAccess")
     public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
@@ -52,6 +61,12 @@ public class CodecNode extends PipelineNode<Data> {
         } else {
             mType = MediaData.TYPE_AUDIO;
         }
+
+        // cache for blocked data
+        mBlockDataCache = new BufferCache<>(mName + "#DataBufferCache",
+                (b, s) -> b == null ? ByteBuffer.allocate(s) : b,
+                Buffer::clear,
+                Buffer::capacity);
 
         // create input pipeline
         mInPipelineSurface = new SimplePipeline<>(mName + "#InPipeline.Surface",
@@ -204,7 +219,7 @@ public class CodecNode extends PipelineNode<Data> {
     }
 
     private void releaseInputData(MediaData data) {
-        if (data.index > 0) {
+        if (data.index >= 0) {
             // get info
             MediaCodec.BufferInfo info = data.info;
 
@@ -255,13 +270,32 @@ public class CodecNode extends PipelineNode<Data> {
         }
     }
 
-    private final Object mBlockLock = new Object();
-    private long mLatestPresentationTimeUs = -1;
-    private boolean mDropFrames = false;
+    private void releaseOutputData(MediaData data) {
+        if (data.index >= 0) {
+            mCodec.releaseOutputBuffer(data.index, false);
+            data.index = -1;
+        } else {
+            mBlockDataCache.put(data.buffer);  // recycle local buffer
+        }
+    }
+
     private void onOutDataCached(MediaData data) {
         mLatestPresentationTimeUs = data.info.presentationTimeUs;
 
-        //Log.i("==MyTest==", "[" + mName + "] onOutDataCached()#");
+        if (!mEnableOutput && (mBlockDurationUs > 0)) {
+            // this data will be blocked in queue, until reach max block duration or output is enabled.
+            // but buffer from MediaCodec should be returned as soon as possible.
+            // So copy data to local buffer and return current buffer to MediaCodec right now
+            if (data.index >= 0) {
+                ByteBuffer localBuffer = mBlockDataCache.get(data.info.size);
+                localBuffer.put(data.buffer);
+                mCodec.releaseOutputBuffer(data.index, false);
+
+                data.index = -1;
+                data.buffer = localBuffer;
+            }
+        }
+
         synchronized (mBlockLock) {
             mBlockLock.notifyAll();
         }
@@ -269,8 +303,13 @@ public class CodecNode extends PipelineNode<Data> {
 
     private int onOutDataReadyProcess(MediaData data) {
         if (mEnableOutput) {
+            if (mAddConfigData) {
+                mAddConfigData = false;
+                data.markConfig();
+                data.format = mCodec.getOutputFormat();
+            }
             return BufferedPipeline.CB_ACCEPT;
-        } else if (mBlockDurationUs > 0) {
+        } else {
             // drop non-key-frames
             if (mDropFrames) {
                 if (!data.isKeyFrame()) {  // drop frames until we get a key frame.
@@ -281,8 +320,10 @@ public class CodecNode extends PipelineNode<Data> {
             }
 
             // block until buffered data duration is grater than max duration allowed
-            while (!Thread.currentThread().isInterrupted() && (mLatestPresentationTimeUs - data.info.presentationTimeUs) <= mBlockDurationUs) {
-                //Log.i("==MyTest==", "[" + mName + "] onOutDataReadyProcess()# " + (mLatestPresentationTimeUs - data.info.presentationTimeUs) + "/" + mBlockDurationUs);
+            while (!Thread.currentThread().isInterrupted() && !mEnableOutput
+                    && (mBlockDurationUs > 0)
+                    && (mLatestPresentationTimeUs - data.info.presentationTimeUs) <= mBlockDurationUs) {
+                // wait until next data cached
                 synchronized (mBlockLock) {
                     try {
                         mBlockLock.wait();
@@ -295,20 +336,12 @@ public class CodecNode extends PipelineNode<Data> {
             // now there's too much data in cache, drop until not key frame
             mDropFrames = true;
             return BufferedPipeline.CB_DROP;
-        } else {
-            return BufferedPipeline.CB_DROP;
-        }
-    }
-
-    private void releaseOutputData(MediaData data) {
-        if (data.index > 0) {
-            mCodec.releaseOutputBuffer(data.index, false);
-            data.index = -1;
         }
     }
 
     public void enableOutput(boolean enable) {
         mEnableOutput = enable;
+        mAddConfigData = true;
         synchronized (mBlockLock) {
             mBlockLock.notifyAll();
         }
@@ -319,7 +352,7 @@ public class CodecNode extends PipelineNode<Data> {
     }
 
     public void setBlockDurationUs(long durationUs) {
-        mBlockDurationUs = durationUs;
+        mBlockDurationUs = (durationUs < 0) ? 0 : durationUs;
         synchronized (mBlockLock) {
             mBlockLock.notifyAll();
         }

@@ -29,7 +29,6 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
     private final Object mConsumerThreadLock = new Object();
 
     private RetrySleepHelper mBindDataRetryHelper;
-    private RetrySleepHelper mWaitQueueRetryHelper;
     private final Cache<T> mCache = new Cache<>(
             "Pipeline.Cache",
             (data) -> {
@@ -70,6 +69,10 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                 mQueue.clear();
             }
         }
+
+        private int size() {
+            return mQueue.size();
+        }
     }
 
     public BufferedPipeline(String name, DataAdapter<T> adapter) {
@@ -82,7 +85,6 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
         mCachedCallback = cachedCallback;
         mProcessCallback = processCallback;
         mBindDataRetryHelper = new RetrySleepHelper(mName + "#bind");
-        mWaitQueueRetryHelper = new RetrySleepHelper(mName + "#wait");
     }
 
     @Override
@@ -112,7 +114,6 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                 while (!Thread.currentThread().isInterrupted() && result == Node.RESULT_OK) {
                     // get data
                     T data = mCache.get();
-
                     // bind data
                     mBindDataRetryHelper.begin();
                     while (!Thread.currentThread().isInterrupted() && (result = mAdapter.onBindData(data)) == Node.RESULT_RETRY) {
@@ -120,20 +121,21 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                     }
                     mBindDataRetryHelper.end();
 
-                    // put data into queue
-                    mQueue.push(data);
-                    synchronized (mQueue) {
-                        mQueue.notifyAll();
-                    }
-
                     // callback
                     if (mCachedCallback != null) {
                         mCachedCallback.onDataCached(data);
                     }
+
+                    // put data into queue
+                    mQueue.push(data);
+
+                    synchronized (mQueue) {
+                        mQueue.notifyAll();
+                    }
                 }
 
                 Log.d(TAG, "[" + mName + "] ProducerThread end");
-            });
+            }, mName + "#Producer");
             mProducerThread.start();
 
             Log.d(TAG, "[" + mName + "] startProducerThread()# end");
@@ -204,7 +206,7 @@ public class BufferedPipeline<T extends Data> extends Pipeline<T> {
                 }
 
                 Log.d(TAG, "[" + mName + "] ConsumerThread end");
-            });
+            }, mName + "#Consumer");
             mConsumerThread.start();
 
             Log.d(TAG, "[" + mName + "] startConsumerThread()# end");
