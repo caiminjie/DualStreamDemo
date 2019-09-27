@@ -85,8 +85,9 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         // config node
         mVideoEncoderNode.enableOutput(mEnableOutput);
         mAudioEncoderNode.enableOutput(mEnableOutput);
-        mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
-        mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
+        // TODO
+//        mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
+//        mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
 
         // init pipeline
         mVideoEncoderNode.inputPipelineSurface().addNode(mCameraNode);
@@ -172,12 +173,7 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
 
     public void setBlockDurationUs(long durationUs) {
         mBlockDurationUs = durationUs;
-        if (mVideoEncoderNode != null) {
-            mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
-        }
-        if (mAudioEncoderNode != null) {
-            mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
-        }
+        // TODO
     }
 
     public long getBlockDurationUs() {

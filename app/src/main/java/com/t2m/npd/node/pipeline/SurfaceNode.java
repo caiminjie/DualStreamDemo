@@ -17,7 +17,7 @@ public class SurfaceNode extends PipelineNode<SurfaceData> {
     private int mType;
     private Surface mSurface;
 
-    private Pipeline<SurfaceData> mPipeline;
+    private SimplePipeline<SurfaceData> mPipeline;
 
     public SurfaceNode(String name, int type, Surface surface) {
         super(name);
@@ -71,7 +71,7 @@ public class SurfaceNode extends PipelineNode<SurfaceData> {
         Log.d(TAG, "[" + mName + "] pipeline [" + mPipeline.name() + "] finished");
     }
 
-    public Pipeline<SurfaceData> pipeline() {
+    public SimplePipeline<SurfaceData> pipeline() {
         return mPipeline;
     }
 }

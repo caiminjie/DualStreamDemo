@@ -23,7 +23,7 @@ public class WavNode extends PipelineNode<MediaData> {
     private int mAudioFormat;
     private boolean mEnableSave = true;
 
-    private Pipeline<MediaData> mPipeline;
+    private SimplePipeline<MediaData> mPipeline;
 
     private final Object mFileAccessLock = new Object();
 
@@ -100,7 +100,7 @@ public class WavNode extends PipelineNode<MediaData> {
         mPipeline.waitForFinish();
     }
 
-    public Pipeline<MediaData> getPipeline() {
+    public SimplePipeline<MediaData> getPipeline() {
         return mPipeline;
     }
 

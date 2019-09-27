@@ -11,13 +11,10 @@ import com.t2m.npd.Pipeline;
 import com.t2m.npd.data.MediaData;
 import com.t2m.npd.data.SurfaceData;
 import com.t2m.npd.node.PipelineNode;
-import com.t2m.npd.pipeline.BufferedPipeline;
 import com.t2m.npd.pipeline.SimplePipeline;
-import com.t2m.npd.util.BufferCache;
+import com.t2m.npd.util.RetrySleepHelper;
 
 import java.io.IOException;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
 import java.security.InvalidParameterException;
 
 /**
@@ -33,17 +30,14 @@ public class CodecNode extends PipelineNode<Data> {
     private Surface mSurface;
 
     private SimplePipeline<SurfaceData> mInPipelineSurface;
-    private BufferedPipeline<MediaData> mInPipeline;
-    private BufferedPipeline<MediaData> mOutPipeline;
+    private SimplePipeline<MediaData> mInPipeline;
+    private SimplePipeline<MediaData> mOutPipeline;
 
-    private boolean mAddConfigData = false;
     private boolean mEnableOutput = true;
-    private long mBlockDurationUs = 0;
 
-    private BufferCache<ByteBuffer> mBlockDataCache;
-    private final Object mBlockLock = new Object();
-    private long mLatestPresentationTimeUs = -1;
-    private boolean mDropFrames = false;
+    private RetrySleepHelper mInputSurfaceRetryHpler;
+    private RetrySleepHelper mInputRetryHpler;
+    private RetrySleepHelper mOutputRetryHpler;
 
     @SuppressWarnings("WeakerAccess")
     public CodecNode(String name, boolean isEncoder, MediaFormat format)  {
@@ -62,11 +56,10 @@ public class CodecNode extends PipelineNode<Data> {
             mType = MediaData.TYPE_AUDIO;
         }
 
-        // cache for blocked data
-        mBlockDataCache = new BufferCache<>(mName + "#DataBufferCache",
-                (b, s) -> b == null ? ByteBuffer.allocate(s) : b,
-                Buffer::clear,
-                Buffer::capacity);
+        // retry
+        mInputSurfaceRetryHpler = new RetrySleepHelper(mName + "#InputSurface");
+        mInputRetryHpler = new RetrySleepHelper(mName + "#Input");
+        mOutputRetryHpler = new RetrySleepHelper(mName + "#Output");
 
         // create input pipeline
         mInPipelineSurface = new SimplePipeline<>(mName + "#InPipeline.Surface",
@@ -87,7 +80,7 @@ public class CodecNode extends PipelineNode<Data> {
                         mInPipelineSurface.stop();
                     }
                 });
-        mInPipeline = new BufferedPipeline<>(mName + "#InPipeline",
+        mInPipeline = new SimplePipeline<>(mName + "#InPipeline",
                 new Pipeline.DataAdapter<MediaData>() {
                     private int id = hashCode();
 
@@ -108,7 +101,7 @@ public class CodecNode extends PipelineNode<Data> {
                 });
 
         // create output pipeline
-        mOutPipeline = new BufferedPipeline<>(mName + "#OutPipeline",
+        mOutPipeline = new SimplePipeline<>(mName + "#OutPipeline",
                 new Pipeline.DataAdapter<MediaData>() {
                     private int id = hashCode();
 
@@ -126,9 +119,7 @@ public class CodecNode extends PipelineNode<Data> {
                     public void onReleaseData(MediaData data) {
                         CodecNode.this.releaseOutputData(data);
                     }
-                },
-                this::onOutDataCached,
-                this::onOutDataReadyProcess);
+                });
     }
 
     @Override
@@ -192,30 +183,38 @@ public class CodecNode extends PipelineNode<Data> {
         Log.d(TAG, "[" + mName + "] pipeline [" + mOutPipeline.name() + "] finished");
     }
 
-    public Pipeline<SurfaceData> inputPipelineSurface() {
+    public SimplePipeline<SurfaceData> inputPipelineSurface() {
         return mInPipelineSurface;
     }
 
-    public Pipeline<MediaData> inputPipeline() {
+    public SimplePipeline<MediaData> inputPipeline() {
         return mInPipeline;
     }
 
-    public Pipeline<MediaData> outputPipeline() {
+    public SimplePipeline<MediaData> outputPipeline() {
         return mOutPipeline;
     }
 
     private int bindInputData(MediaData data) {
-        int index = mCodec.dequeueInputBuffer(10000);
-        if (index < 0) {
-            return RESULT_RETRY;
-        } else {
-            data.index = index;
-            data.buffer = mCodec.getInputBuffer(data.index);
-            assert data.buffer != null;
+        int index = MediaCodec.INFO_TRY_AGAIN_LATER;
 
-            data.buffer.clear();
-            return RESULT_OK;
+        mInputRetryHpler.begin();
+        while (!Thread.currentThread().isInterrupted() && (index = mCodec.dequeueInputBuffer(10000)) < 0) {
+            mInputRetryHpler.sleep();
         }
+        mInputRetryHpler.end();
+
+        if (index < 0) {
+            // interrupt
+            return RESULT_EOS;
+        }
+
+        // bind
+        data.index = index;
+        data.buffer = mCodec.getInputBuffer(data.index);
+        assert data.buffer != null;
+        data.buffer.clear();
+        return RESULT_OK;
     }
 
     private void releaseInputData(MediaData data) {
@@ -235,13 +234,21 @@ public class CodecNode extends PipelineNode<Data> {
     }
 
     private int bindInputDataSurface(SurfaceData data) {
-        if (mSurface == null) {
-            return RESULT_RETRY;
-        } else {
-            data.type = SurfaceData.TYPE_RECORD;
-            data.surface = mSurface;
-            return RESULT_OK;
+        mInputSurfaceRetryHpler.begin();
+        while (!Thread.currentThread().isInterrupted() && mSurface == null) {
+            mInputSurfaceRetryHpler.sleep();
         }
+        mInputSurfaceRetryHpler.end();
+
+        if (mSurface == null) {
+            // interrupt
+            return RESULT_EOS;
+        }
+
+        // bind
+        data.type = SurfaceData.TYPE_RECORD;
+        data.surface = mSurface;
+        return RESULT_OK;
     }
 
     private void releaseInputDataSurface(SurfaceData data) {
@@ -252,113 +259,40 @@ public class CodecNode extends PipelineNode<Data> {
     }
 
     private int bindOutputData(MediaData data) {
-        int index = mCodec.dequeueOutputBuffer(data.info, 10000);
-        if (index < 0) {
-            return RESULT_RETRY;
-        } else {
-            data.index = index;
-            data.buffer = mCodec.getOutputBuffer(data.index);
-            assert data.buffer != null;
+        int index = MediaCodec.INFO_TRY_AGAIN_LATER;
 
-            // set config data if necessary
-            if (data.isConfig()) {
-                data.format = mCodec.getOutputFormat();
-            }
-
-            data.buffer.position(data.info.offset);
-            return RESULT_OK;
+        mOutputRetryHpler.begin();
+        while (!Thread.currentThread().isInterrupted() && (index = mCodec.dequeueOutputBuffer(data.info, 10000)) < 0) {
+            mOutputRetryHpler.sleep();
         }
+        mOutputRetryHpler.end();
+
+        if (index < 0) {
+            // interrupt
+            return RESULT_EOS;
+        }
+
+        // bind data
+        data.index = index;
+        data.buffer = mCodec.getOutputBuffer(data.index);
+        assert data.buffer != null;
+        data.format = mCodec.getOutputFormat();
+        data.buffer.position(data.info.offset);
+        return RESULT_OK;
     }
 
     private void releaseOutputData(MediaData data) {
         if (data.index >= 0) {
             mCodec.releaseOutputBuffer(data.index, false);
             data.index = -1;
-        } else {
-            mBlockDataCache.put(data.buffer);  // recycle local buffer
-        }
-    }
-
-    private void onOutDataCached(MediaData data) {
-        mLatestPresentationTimeUs = data.info.presentationTimeUs;
-
-        if (!mEnableOutput && (mBlockDurationUs > 0)) {
-            // this data will be blocked in queue, until reach max block duration or output is enabled.
-            // but buffer from MediaCodec should be returned as soon as possible.
-            // So copy data to local buffer and return current buffer to MediaCodec right now
-            if (data.index >= 0) {
-                ByteBuffer localBuffer = mBlockDataCache.get(data.info.size);
-                localBuffer.put(data.buffer);
-                mCodec.releaseOutputBuffer(data.index, false);
-
-                data.index = -1;
-                data.buffer = localBuffer;
-            }
-        }
-
-        synchronized (mBlockLock) {
-            mBlockLock.notifyAll();
-        }
-    }
-
-    private int onOutDataReadyProcess(MediaData data) {
-        if (mEnableOutput) {
-            if (mAddConfigData) {
-                mAddConfigData = false;
-                data.markConfig();
-                data.format = mCodec.getOutputFormat();
-            }
-            return BufferedPipeline.CB_ACCEPT;
-        } else {
-            // drop non-key-frames
-            if (mDropFrames) {
-                if (!data.isKeyFrame()) {  // drop frames until we get a key frame.
-                    return BufferedPipeline.CB_DROP;
-                } else {
-                    mDropFrames = false; // it's key frame, stop drop
-                }
-            }
-
-            // block until buffered data duration is grater than max duration allowed
-            while (!Thread.currentThread().isInterrupted() && !mEnableOutput
-                    && (mBlockDurationUs > 0)
-                    && (mLatestPresentationTimeUs - data.info.presentationTimeUs) <= mBlockDurationUs) {
-                // wait until next data cached
-                synchronized (mBlockLock) {
-                    try {
-                        mBlockLock.wait();
-                    } catch (InterruptedException e) {
-                        Log.w(TAG, "onOutDataReadyProcess()# wait for block interrupted", e); // TODO remove exception log later
-                    }
-                }
-            }
-
-            // now there's too much data in cache, drop until not key frame
-            mDropFrames = true;
-            return BufferedPipeline.CB_DROP;
         }
     }
 
     public void enableOutput(boolean enable) {
         mEnableOutput = enable;
-        mAddConfigData = true;
-        synchronized (mBlockLock) {
-            mBlockLock.notifyAll();
-        }
     }
 
     public boolean enableOutput() {
         return mEnableOutput;
-    }
-
-    public void setBlockDurationUs(long durationUs) {
-        mBlockDurationUs = (durationUs < 0) ? 0 : durationUs;
-        synchronized (mBlockLock) {
-            mBlockLock.notifyAll();
-        }
-    }
-
-    public long getBlockDurationUs() {
-        return mBlockDurationUs;
     }
 }

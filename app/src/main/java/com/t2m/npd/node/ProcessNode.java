@@ -6,9 +6,15 @@ import com.t2m.npd.util.RetrySleepHelper;
 
 public abstract class ProcessNode<T extends Data> extends Node {
     private RetrySleepHelper mRetryHelper;
+    private boolean mEnabled;
 
     public ProcessNode(String name) {
+        this(name, true);
+    }
+
+    public ProcessNode(String name, boolean enabled) {
         super(name);
+        mEnabled = enabled;
         mRetryHelper = new RetrySleepHelper(mName + "#retry");
     }
 
@@ -17,7 +23,13 @@ public abstract class ProcessNode<T extends Data> extends Node {
      * @param data data to process
      * @return result {@link Node#RESULT_OK}, {@link Node#RESULT_RETRY}, {@link Node#RESULT_NOT_OPEN}, {@link Node#RESULT_ERROR}, {@link Node#RESULT_EOS}
      */
-    public abstract int process(T data);
+    public final int process(T data) {
+        if (mEnabled) {
+            return onProcess(data);
+        } else {
+            return Node.RESULT_OK; // disabled node, just drop data.
+        }
+    }
 
     /**
      * process the data with auto retry
@@ -33,4 +45,6 @@ public abstract class ProcessNode<T extends Data> extends Node {
         mRetryHelper.end();
         return result;
     }
+
+    protected abstract int onProcess(T data);
 }

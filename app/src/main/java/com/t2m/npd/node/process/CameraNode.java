@@ -330,7 +330,7 @@ public class CameraNode extends ProcessNode<SurfaceData> {
     }
 
     @Override
-    public int process(SurfaceData data) {
+    public int onProcess(SurfaceData data) {
         synchronized (mSurfaces) {
             mPendingOpen = true;
             mSurfaces.add(data.surface);

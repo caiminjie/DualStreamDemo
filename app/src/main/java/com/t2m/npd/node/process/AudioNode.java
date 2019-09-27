@@ -197,7 +197,7 @@ public class AudioNode extends ProcessNode<MediaData> {
     }
 
     @Override
-    public int process(MediaData data) {
+    public int onProcess(MediaData data) {
         if (mStatus == STATUS_NOT_OPENED) {
             return RESULT_RETRY;
         } else if (mStatus == STATUS_CLOSED || mStatus == STATUS_CLOSING) {

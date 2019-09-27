@@ -99,20 +99,20 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
     }
 
     @Override
-    public int process(MediaData data) {
+    public int onProcess(MediaData data) {
         // do process
         switch (data.type) {
             case MediaData.TYPE_AUDIO:
-                return processAudioData(data);
+                return onProcessAudioData(data);
             case MediaData.TYPE_VIDEO:
-                return processVideoData(data);
+                return onProcessVideoData(data);
             default:
                 Log.e(TAG, "[" + mName + "] Invalid data type: " + data.type);
                 return RESULT_ERROR;
         }
     }
 
-    private int processAudioData(MediaData data) {
+    private int onProcessAudioData(MediaData data) {
         //Log.i(TAG, "processAudioData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
@@ -164,7 +164,7 @@ public class MediaMuxerNode extends ProcessNode<MediaData> {
         }
     }
 
-    private int processVideoData(MediaData data) {
+    private int onProcessVideoData(MediaData data) {
         //Log.i(TAG, "processVideoData()");
         synchronized (mWriterLock) {
             if (!isOpened()) {
