@@ -55,17 +55,19 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
 
     @Override
     protected void onClose() throws IOException {
-        mAudioTrackIndex = -1;
-        mVideoTrackIndex = -1;
-        mMuxStarted = false;
+        synchronized (mWriterLock) {
+            mAudioTrackIndex = -1;
+            mVideoTrackIndex = -1;
+            mMuxStarted = false;
 
-        if (mMuxer != null) {
-            try {
-                mMuxer.release();
-            }catch (Exception e){
-                throw new IOException("[" + mName + "] release muxer failed. the saved record should be broken", e); // MODIFIED by Fan.Hu, 2018-01-18,BUG-5709670
+            if (mMuxer != null) {
+                try {
+                    mMuxer.release();
+                } catch (Exception e) {
+                    throw new IOException("[" + mName + "] release muxer failed. the saved record should be broken", e); // MODIFIED by Fan.Hu, 2018-01-18,BUG-5709670
+                }
+                mMuxer = null;
             }
-            mMuxer = null;
         }
     }
 
@@ -158,6 +160,7 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
             // write sample if configured
             if (mMuxStarted) {
                 if (!data.isConfig()) {
+                    //Log.i("==MyTest==", "time: " + data.info().presentationTimeUs);
                     ByteBuffer buffer = data.buffer();
                     assert buffer != null;
                     MediaCodec.BufferInfo info = data.info();

@@ -12,8 +12,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class ByteBufferInputCacheNode extends ConnNode<ByteBufferData, ByteBufferData> {
-    private static final String TAG = ByteBufferInputCacheNode.class.getSimpleName();
+public class ByteBufferCacheNode extends ConnNode<ByteBufferData, ByteBufferData> {
+    private static final String TAG = ByteBufferCacheNode.class.getSimpleName();
     private static final int MAGIC_INDEX = -10086;
 
     private final Object mLock = new Object();
@@ -25,7 +25,7 @@ public abstract class ByteBufferInputCacheNode extends ConnNode<ByteBufferData, 
 
     private ByteBufferData mConfigData;
 
-    public ByteBufferInputCacheNode(String name) {
+    public ByteBufferCacheNode(String name) {
         super(name);
 
         mCache = new BufferCache<>(

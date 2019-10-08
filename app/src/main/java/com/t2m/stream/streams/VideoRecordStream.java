@@ -5,6 +5,7 @@ import android.util.Size;
 
 import com.t2m.dualstream.Utils;
 import com.t2m.pan.Task;
+import com.t2m.pan.node.conn.ByteBufferCacheNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.pan.node.head.CodecNode;
@@ -36,6 +37,8 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
 
     private CodecNode mVideoEncoderNode = null;
     private CodecNode mAudioEncoderNode = null;
+    private ByteBufferCacheNode mVideoCacheNode = null;
+    private ByteBufferCacheNode mAudioCacheNode = null;
     private MediaMuxerNode mMuxerNode = null;
 
     private boolean mEnableOutput = true;
@@ -80,14 +83,16 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
                 new H265EncoderNode(subName("VE265"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate, CodecNode.TYPE_SURFACE, CodecNode.TYPE_BYTE_BUFFER) :
                 new H264EncoderNode(subName("VE264"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate, CodecNode.TYPE_SURFACE, CodecNode.TYPE_BYTE_BUFFER);
         mAudioEncoderNode = new M4aEncoderNode(subName("AE"), CodecNode.TYPE_BYTE_BUFFER, CodecNode.TYPE_BYTE_BUFFER);
+        mVideoCacheNode = new ByteBufferCacheNode("VC");
+        mAudioCacheNode = new ByteBufferCacheNode("AC");
         mMuxerNode = new MediaMuxerNode(subName("MX"), mPath, mCameraNode.getSensorOrientation());
 
+
         // config node
-//        mVideoEncoderNode.enableOutput(mEnableOutput);
-//        mAudioEncoderNode.enableOutput(mEnableOutput);
-        // TODO
-//        mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
-//        mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
+        mVideoCacheNode.enableOutput(mEnableOutput);
+        mAudioCacheNode.enableOutput(mEnableOutput);
+        mVideoCacheNode.cacheDurationUs(mBlockDurationUs);
+        mAudioCacheNode.cacheDurationUs(mBlockDurationUs);
 
         // config video input pipeline
         task.addPipeline("VideoInput")
@@ -97,6 +102,7 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         // config video output pipeline
         task.addPipeline("VideoOutput")
                 .addNode(mVideoEncoderNode.getOutputNode())
+                .addNode(mVideoCacheNode)
                 .addNode(mMuxerNode);
 
         // config audio input pipeline
@@ -107,6 +113,7 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         // config audio output pipeline
         task.addPipeline("AudioOutput")
                 .addNode(mAudioEncoderNode.getOutputNode())
+                .addNode(mAudioCacheNode)
                 .addNode(mMuxerNode);
 
         return true;
@@ -163,13 +170,13 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
     }
 
     public void enableOutput(boolean enable) {
-//        mEnableOutput = enable;
-//        if (mVideoEncoderNode != null) {
-//            mVideoEncoderNode.enableOutput(mEnableOutput);
-//        }
-//        if (mAudioEncoderNode != null) {
-//            mAudioEncoderNode.enableOutput(mEnableOutput);
-//        }
+        mEnableOutput = enable;
+        if (mVideoCacheNode != null) {
+            mVideoCacheNode.enableOutput(mEnableOutput);
+        }
+        if (mAudioCacheNode != null) {
+            mAudioCacheNode.enableOutput(mEnableOutput);
+        }
     }
 
     public boolean enableOutput() {
@@ -178,7 +185,12 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
 
     public void setBlockDurationUs(long durationUs) {
         mBlockDurationUs = durationUs;
-        // TODO
+        if (mVideoCacheNode != null) {
+            mVideoCacheNode.cacheDurationUs(mBlockDurationUs);
+        }
+        if (mAudioCacheNode != null) {
+            mAudioCacheNode.cacheDurationUs(mBlockDurationUs);
+        }
     }
 
     public long getBlockDurationUs() {
