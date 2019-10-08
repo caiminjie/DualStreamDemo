@@ -6,8 +6,8 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 
-import com.t2m.pan.Data;
 import com.t2m.pan.data.ByteBufferData;
+import com.t2m.pan.pan;
 
 import java.io.File;
 import java.io.IOException;
@@ -79,7 +79,7 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
                 return onProcessVideoData(data);
             default:
                 Log.e(TAG, "[" + mName + "] Invalid data type: " + data.type);
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
         }
     }
 
@@ -96,6 +96,13 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
                 File file = new File(mPath);
                 if (file.exists()) {
                     file.deleteOnExit();
+                } else {
+                    File parent = file.getParentFile();
+                    if (parent != null && !parent.exists()) {
+                        if (!parent.mkdirs()) {
+                            Log.w(TAG, "Create dir [" + parent.getAbsolutePath() + "] failed.");
+                        }
+                    }
                 }
 
                 // create new
@@ -122,14 +129,14 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 Log.e(TAG, "onProcessAudioData()# not opened.");
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
             }
 
             // get muxer. new muxer will be received if path changed (new segment)
             MediaMuxer muxer = getMuxer();
             if (muxer == null) {
                 Log.e(TAG, "onProcessAudioData()# get muxer failed.");
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
             }
 
             // get format
@@ -163,10 +170,10 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
                         prevOutputPTSUs = info.presentationTimeUs;
                     }
                 }
-                return Data.RESULT_OK;
+                return pan.RESULT_OK;
             } else {
                 Log.w(TAG, "not configured, drop this audio sample");
-                return Data.RESULT_OK;
+                return pan.RESULT_OK;
             }
         }
     }
@@ -176,14 +183,14 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
         synchronized (mWriterLock) {
             if (!isOpened()) {
                 Log.e(TAG, "onProcessVideoData()# not opened.");
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
             }
 
             // get muxer. new muxer will be received if path changed (new segment)
             MediaMuxer muxer = getMuxer();
             if (muxer == null) {
                 Log.e(TAG, "onProcessVideoData()# get muxer failed.");
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
             }
 
             // get format
@@ -217,10 +224,10 @@ public class MediaMuxerNode extends TailNode<ByteBufferData> {
                         prevOutputPTSUs = info.presentationTimeUs;
                     }
                 }
-                return Data.RESULT_OK;
+                return pan.RESULT_OK;
             } else {
                 Log.w(TAG, "[" + mName + "] not configured, drop this video sample");
-                return Data.RESULT_OK;
+                return pan.RESULT_OK;
             }
         }
     }

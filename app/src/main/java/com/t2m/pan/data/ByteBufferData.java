@@ -4,6 +4,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 
 import com.t2m.pan.Data;
+import com.t2m.pan.pan;
 
 import java.nio.ByteBuffer;
 
@@ -95,12 +96,12 @@ public class ByteBufferData extends AbstractReadableWriteableData implements IBy
     public int write(byte[] buff, int offset, int len) {
         buffer.clear();
         buffer.put(buff, offset, len);
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     @Override
     public int read(byte[] buff, int offset, int len) {
         buffer.get(buff, offset, len);
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 }

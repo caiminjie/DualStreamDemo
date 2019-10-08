@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.t2m.pan.Data;
 import com.t2m.pan.data.ByteBufferData;
+import com.t2m.pan.pan;
 import com.t2m.pan.util.Utils;
 import com.t2m.pan.util.WavFileWriter;
 
@@ -69,9 +70,9 @@ public class WavTailNode extends TailNode<ByteBufferData> {
                 data.read(mFile.getAppendBuffer(data.info().size));
             } catch (IOException e) {
                 Log.e(TAG, "encode()# write data error", e);
-                return Data.RESULT_ERROR;
+                return pan.RESULT_ERROR;
             }
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
     }
 

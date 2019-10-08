@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.Surface;
 
 import com.t2m.pan.data.SurfaceData;
+import com.t2m.pan.pan;
 import com.t2m.pan.util.RetrySleepHelper;
 import com.t2m.pan.Data;
 import com.t2m.pan.Node;
@@ -134,12 +135,12 @@ public class CodecNode extends HeadNode<Data> {
 
     @Override
     protected int onBindData(Data data) {
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     @Override
     protected int onReleaseData(Data data) {
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     private void inputEos(boolean eos) {
@@ -224,7 +225,7 @@ public class CodecNode extends HeadNode<Data> {
             if (index < 0) {
                 // interrupt
                 data.markEos();
-                return Data.RESULT_EOS;
+                return pan.RESULT_EOS;
             }
 
             // bind
@@ -233,7 +234,7 @@ public class CodecNode extends HeadNode<Data> {
             buffer.clear();
             data.buffer(buffer);
             data.index(index);
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
 
         protected int onReleaseData(ByteBufferData data) {
@@ -256,10 +257,10 @@ public class CodecNode extends HeadNode<Data> {
             // set input inputEos
             if (data.isEos()) {
                 inputEos(true);
-                return Data.RESULT_EOS;
+                return pan.RESULT_EOS;
             }
 
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
     }
 
@@ -311,7 +312,7 @@ public class CodecNode extends HeadNode<Data> {
                 if (inputEos()) { // currently input is already eos. output should also be eos.
                     Log.i("==MyTest==", "[" + mName + "] output##### eos");
                     data.index(-1);
-                    return Data.RESULT_EOS;
+                    return pan.RESULT_EOS;
                 }
                 mRetryHelper.sleep();
             }
@@ -320,7 +321,7 @@ public class CodecNode extends HeadNode<Data> {
             if (index < 0) {
                 // interrupt
                 data.markEos();
-                return Data.RESULT_EOS;
+                return pan.RESULT_EOS;
             }
 
             // bind data
@@ -331,7 +332,7 @@ public class CodecNode extends HeadNode<Data> {
             data.index(index);
             data.buffer(buffer);
             data.format(mCodec.getOutputFormat());
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
 
         protected int onReleaseData(ByteBufferData data) {
@@ -342,7 +343,7 @@ public class CodecNode extends HeadNode<Data> {
                 data.index(-1);
             }
 
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
     }
 
@@ -396,13 +397,13 @@ public class CodecNode extends HeadNode<Data> {
             if (mInputSurface == null) {
                 // interrupt
                 inputEos(true);
-                return Data.RESULT_EOS;
+                return pan.RESULT_EOS;
             }
 
             // bind
             data.template = SurfaceData.TYPE_RECORD;
             data.surface = mInputSurface;
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
 
         protected int onReleaseData(SurfaceData data) {
@@ -413,7 +414,7 @@ public class CodecNode extends HeadNode<Data> {
 
             inputEos(true);
 
-            return Data.RESULT_EOS;
+            return pan.RESULT_EOS;
         }
     }
 }

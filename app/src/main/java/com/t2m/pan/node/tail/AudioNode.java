@@ -5,8 +5,8 @@ import android.media.MediaCodec;
 import android.util.Log;
 import android.util.SparseArray;
 
-import com.t2m.pan.Data;
 import com.t2m.pan.data.ByteBufferData;
+import com.t2m.pan.pan;
 import com.t2m.pan.util.Cache;
 import com.t2m.pan.util.RetrySleepHelper;
 import com.t2m.pan.util.Utils;
@@ -37,7 +37,6 @@ public class AudioNode extends TailNode<ByteBufferData> {
     private final SparseArray<Queue> mStreamQueues = new SparseArray<>();
     private final Object mStreamLock = new Object();
 
-    private final Object mFetchLock = new Object();
     private RetrySleepHelper mRetryHelper;
 
     private class Queue {
@@ -138,7 +137,7 @@ public class AudioNode extends TailNode<ByteBufferData> {
 
     @Override
     protected void onOpen() throws IOException {
-        synchronized(mOpenLock){
+        synchronized (mOpenLock) {
             Log.d(TAG, "[" + mName + "] onOpen() begin");
             mEos = false;
             mSampleCount = 0;
@@ -162,17 +161,12 @@ public class AudioNode extends TailNode<ByteBufferData> {
     @Override
     protected void onClose() throws IOException {
         Log.d(TAG, "[" + mName + "] onClose() before lock");
-        synchronized(mOpenLock) {
+        synchronized (mOpenLock) {
             Log.d(TAG, "[" + mName + "] onClose() begin");
             mEos = true;
 
             // clear all queues
-            synchronized (mStreamLock) {
-                for (int i = 0; i < mStreamQueues.size(); i++) {
-                    Queue queue = mStreamQueues.valueAt(i);
-                    queue.clearQueue();
-                }
-            }
+            clearStreams();
 
             if (mAudioRecord != null) {
                 if (mAudioRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
@@ -189,18 +183,25 @@ public class AudioNode extends TailNode<ByteBufferData> {
     @Override
     protected int onProcessData(ByteBufferData data) {
         // get queue
-        Queue queue = mStreamQueues.get(data.id);
-        if (queue == null) {
-            queue = addStream(data.id); // new id should add a new queue
-        }
+        Queue queue = getStream(data.id);
 
         // get buffer
+        int result;
         Buffer buffer;
         while ((buffer = queue.dequeue()) == null) {
             // fetch more
-            if (!fetchMore(queue)) {
-                return Data.RESULT_ERROR;
+            if ((result = fetchMore(queue)) != pan.RESULT_OK) {
+                if (pan.stopPipeline(result)) {
+                    data.markEos();
+                }
+                return result;
             }
+        }
+
+        // check eos
+        if (mEos) {
+            data.markEos();
+            return pan.RESULT_EOS;
         }
 
         // copy to data
@@ -210,24 +211,28 @@ public class AudioNode extends TailNode<ByteBufferData> {
         // release buffer
         buffer.release();
 
-        // check eos
-        if (mEos) {
-            data.markEos();
-            return Data.RESULT_EOS;
-        } else {
-            return Data.RESULT_OK;
+        return pan.RESULT_OK;
+    }
+
+    private void clearStreams() {
+        synchronized (mStreamLock) {
+            for (int i = 0; i < mStreamQueues.size(); i++) {
+                Queue queue = mStreamQueues.valueAt(i);
+                queue.clearQueue();
+            }
+            mStreamQueues.clear();
         }
     }
 
-    private Queue addStream(int id) {
+    private Queue getStream(int id) {
         synchronized (mStreamLock) {
-            Log.d(TAG, "addStream() begin");
+            //Log.d(TAG, "getStream() begin");
             Queue queue = mStreamQueues.get(id);
             if (queue == null) {
                 queue = new Queue();
                 mStreamQueues.put(id, queue);
             }
-            Log.d(TAG, "addStream() end");
+            //Log.d(TAG, "getStream() end");
             return queue;
         }
     }
@@ -241,10 +246,16 @@ public class AudioNode extends TailNode<ByteBufferData> {
         }
     }
 
-    private boolean fetchMore(Queue queue) {
-        synchronized (mFetchLock) {
+    private int fetchMore(Queue queue) {
+        //Log.d(TAG, "[" + mName + "] fetchMore() before lock");
+        synchronized (mOpenLock) {
+            //Log.d(TAG, "[" + mName + "] fetchMore() locked");
+            if (mEos) {
+                return pan.RESULT_EOS;
+            }
+
             if (!queue.shouldFetch()) {
-                return true;  // already fetched by other node
+                return pan.RESULT_OK;  // already fetched by other node
             }
 
             // do fetch
@@ -260,11 +271,11 @@ public class AudioNode extends TailNode<ByteBufferData> {
             // check
             if (buffer.len == 0) {
                 mCache.put(buffer);
-                return false;
+                return pan.RESULT_ERROR;
             } else if (buffer.len < 0) {
                 Log.e(TAG, "Fetch error: " + buffer.len);
                 mCache.put(buffer);
-                return false;
+                return pan.RESULT_ERROR;
             } else {
                 // fill info
                 MediaCodec.BufferInfo info = buffer.info;
@@ -285,7 +296,7 @@ public class AudioNode extends TailNode<ByteBufferData> {
                 // dispatch buffer to all nodes
                 dispatchStreamData(buffer);
 
-                return true;
+                return pan.RESULT_OK;
             }
         }
     }

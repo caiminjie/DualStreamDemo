@@ -4,6 +4,7 @@ import android.view.Surface;
 
 import com.t2m.pan.Data;
 import com.t2m.pan.data.SurfaceData;
+import com.t2m.pan.pan;
 
 import java.io.IOException;
 
@@ -42,11 +43,11 @@ public class SurfaceNode extends HeadNode<SurfaceData> {
     protected int onBindData(SurfaceData data) {
         data.template = mTemplate;
         data.surface = mSurface;
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     protected int onReleaseData(SurfaceData data) {
         data.surface = null;
-        return Data.RESULT_EOS;
+        return pan.RESULT_EOS;
     }
 }

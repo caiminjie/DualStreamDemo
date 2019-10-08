@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.t2m.pan.Data;
 import com.t2m.pan.data.ByteBufferData;
+import com.t2m.pan.pan;
 import com.t2m.pan.util.Utils;
 import com.t2m.pan.util.WavFileWriter;
 
@@ -30,11 +31,13 @@ public class WavHeadNode extends HeadNode<ByteBufferData> {
 
         @Override
         public int write(byte[] buff, int offset, int len) {
-            try {
-                return mFile.append(buff, offset, len);
-            } catch (IOException e) {
-                Log.e(TAG, "write()# write data failed.", e);
-                return 0;
+            synchronized (mFileAccessLock) {
+                try {
+                    return mFile.append(buff, offset, len);
+                } catch (IOException e) {
+                    Log.e(TAG, "write()# write data failed.", e);
+                    return 0;
+                }
             }
         }
     }
@@ -65,6 +68,13 @@ public class WavHeadNode extends HeadNode<ByteBufferData> {
             File file = new File(mPath);
             if (file.exists()) {
                 file.deleteOnExit();
+            } else {
+                File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    if (!parent.mkdirs()) {
+                        Log.w(TAG, "Create dir [" + parent.getAbsolutePath() + "] failed.");
+                    }
+                }
             }
 
             mFile = new WavFileWriter(mPath, mSampleRate, mChannelCount, Utils.getBitsPerSample(mAudioFormat));
@@ -85,11 +95,11 @@ public class WavHeadNode extends HeadNode<ByteBufferData> {
     }
 
     protected int onBindData(ByteBufferData data) {
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     protected int onReleaseData(ByteBufferData data) {
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     /**

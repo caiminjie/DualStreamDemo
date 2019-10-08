@@ -3,6 +3,7 @@ package com.t2m.pan;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.List;
 
 public abstract class Node<IN extends Data, OUT extends Data> {
     private static final String TAG = Node.class.getSimpleName();
@@ -41,20 +42,17 @@ public abstract class Node<IN extends Data, OUT extends Data> {
         onClose();
     }
 
-    protected Data dispatch(Data data) {
-        return onDispatch((IN)data);
+    protected int dispatch(List<Data> inData, List<Data> outData) {
+        return onDispatch((List<IN>)inData, (List<OUT>)outData);
     }
 
-    protected Data process(Data data) {
-        return onProcess((OUT) data);
+    protected int process(List<Data> inData, List<Data> outData) {
+        return onProcess((List<OUT>) inData, (List<IN>) outData);
     }
-
-    Node<OUT, ? extends Data> next;
-    Node<? extends Data, IN> prev;
 
     public abstract boolean isOpened();
     protected abstract void onOpen() throws IOException;
     protected abstract void onClose() throws IOException;
-    protected abstract OUT onDispatch(IN data);
-    protected abstract IN onProcess(OUT data);
+    protected abstract int onDispatch(List<IN> inData, List<OUT> outData);
+    protected abstract int onProcess(List<OUT> inData, List<IN> outData);
 }

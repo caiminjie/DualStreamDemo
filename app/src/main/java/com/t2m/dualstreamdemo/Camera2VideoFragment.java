@@ -227,13 +227,13 @@ public class Camera2VideoFragment extends Fragment
                 .setVideoCodecType(VideoRecordStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
-                .setPath("/sdcard/DCIM/a.mp4");
+                .setPath("/sdcard/DCIM/ds/a.mp4");
         task.addVideoRecordStream("Video2")
                 .setPreferredVideoSize(720, 16, 9)
                 .setVideoCodecType(VideoRecordStream.CODEC_H264)
                 .setBitRate(10000000)
                 .setFrameRate(30)
-                .setPath("/sdcard/DCIM/b.mp4");
+                .setPath("/sdcard/DCIM/ds/b.mp4");
 
         // start task
         mStreamManager.startTask(
@@ -382,7 +382,7 @@ public class Camera2VideoFragment extends Fragment
 
     private String getOutputPath(String ext) {
         File file;
-        while ((file = new File("/sdcard/DCIM/" + System.currentTimeMillis() + "." + ext)).exists());
+        while ((file = new File("/sdcard/DCIM/ds/" + System.currentTimeMillis() + "." + ext)).exists());
         return file.getAbsolutePath();
     }
 

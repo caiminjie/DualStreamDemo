@@ -22,8 +22,8 @@ import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 
-import com.t2m.pan.Data;
 import com.t2m.pan.data.SurfaceData;
+import com.t2m.pan.pan;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -200,7 +200,7 @@ public class CameraNode extends TailNode<SurfaceData> {
         }
 
         Log.d(TAG, "[" + mName + "] unblock pipeline");
-        return Data.RESULT_EOS; // only run once
+        return pan.RESULT_EOS; // only run once
         // TODO why sometimes thread is interrupted and unblock from wait, but thread is detected as non-interrupted at next pipeline loop.
     }
 
@@ -285,7 +285,7 @@ public class CameraNode extends TailNode<SurfaceData> {
     @SuppressWarnings("UnusedReturnValue")
     public int openCamera(OnCameraOpenedListener listener) {
         if (mIsCameraOpened) {
-            return Data.RESULT_OK;
+            return pan.RESULT_OK;
         }
         mIsCameraOpened = true;
 
@@ -301,7 +301,7 @@ public class CameraNode extends TailNode<SurfaceData> {
 
         if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "No permission to access camera");
-            return Data.RESULT_ERROR;
+            return pan.RESULT_ERROR;
         }
 
         try {
@@ -336,7 +336,7 @@ public class CameraNode extends TailNode<SurfaceData> {
             Log.e(TAG, "open camera failed.", e);
             mEventHandler.sendEmptyMessage(MSG_QUIT);
         }
-        return Data.RESULT_OK;
+        return pan.RESULT_OK;
     }
 
     public void closeCamera() {

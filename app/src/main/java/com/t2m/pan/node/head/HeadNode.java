@@ -2,10 +2,12 @@ package com.t2m.pan.node.head;
 
 import com.t2m.pan.Data;
 import com.t2m.pan.Node;
+import com.t2m.pan.pan;
 import com.t2m.pan.util.Cache;
 
+import java.util.List;
+
 public abstract class HeadNode<T extends Data> extends Node<Data, T> {
-    private Data mResult;
     private Cache<T> mCache;
 
     public HeadNode(String name) {
@@ -17,22 +19,24 @@ public abstract class HeadNode<T extends Data> extends Node<Data, T> {
     }
 
     @Override
-    protected T onDispatch(Data data) {
-        mResult = data;
+    protected int onDispatch(List<Data> inData, List<T> outData) {
         T d = mCache.get();
-        d.result = onBindData(d);
-        return d;
+        int result = onBindData(d);
+        outData.add(d);
+        return result;
     }
 
     @Override
-    protected Data onProcess(T data) {
-        mResult.result = onReleaseData(data);
-        if (data.result != Data.RESULT_OK) {
-            // if previous node is not ok, pass the result to next.
-            mResult.result = data.result;
+    protected int onProcess(List<T> inData, List<Data> outData) {
+        int result = pan.RESULT_OK;
+        for (T data : inData) {
+            int r = onReleaseData(data);
+            mCache.put(data);
+            if (result == pan.RESULT_OK && r != pan.RESULT_OK) {
+                result = r;
+            }
         }
-        mCache.put(data);
-        return mResult;
+        return result;
     }
 
     protected abstract T onCreateData();

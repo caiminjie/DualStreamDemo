@@ -3,6 +3,8 @@ package com.t2m.pan;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Pipeline {
     private static final String TAG = Pipeline.class.getSimpleName();
@@ -117,24 +119,45 @@ public class Pipeline {
                 }
 
                 // process
-                Data data = new Data(0, 0);
-                while (!Thread.currentThread().isInterrupted() && data.result == Data.RESULT_OK) {
+                List<Data> inData = new ArrayList<>();
+                List<Data> outData = new ArrayList<>();
+                List<Data> tmpData;
+                int result = pan.RESULT_OK;
+                while (!Thread.currentThread().isInterrupted() && !pan.stopPipeline(result)) {
                     // dispatch
                     item = mHeadNodeItem;
                     while (item != null) {
-                        data = item.node.dispatch(data);
-                        if (data.result != Data.RESULT_OK)  break; // loop until get error or eos
+                        result = item.node.dispatch(inData, outData);
+                        if (result != pan.RESULT_OK)  break; // loop until get error or eos
                         item = item.next;
+
+                        // prepare in/out data for next loop
+                        tmpData = inData;
+                        inData = outData;
+                        outData = tmpData;
+                        outData.clear();
                     }
 
                     // process
-                    int prevResult;
+                    int tmpResult;
                     if (item == null)   item = mTailNodeItem; // if reach end, start from tail
                     while (item != null) {
-                        prevResult = data.result;
-                        data = item.node.process(data);
-                        if (prevResult != Data.RESULT_OK) data.result = prevResult; // if previous data is not OK, pass previous result
+                        // do process
+                        tmpResult = item.node.process(inData, outData);
+
+                        // get result
+                        if (result < tmpResult) {
+                            result = tmpResult;
+                        }
+
+                        // next item
                         item = item.prev;
+
+                        // prepare in/out data for next loop
+                        tmpData = inData;
+                        inData = outData;
+                        outData = tmpData;
+                        outData.clear();
                     }
                 }
 
@@ -149,7 +172,7 @@ public class Pipeline {
                     item = item.next;
                 }
 
-                Log.d(TAG, "[" + mName + "#" + hashCode() + "] pipeline end with result code: " + data.result);
+                Log.d(TAG, "[" + mName + "#" + hashCode() + "] pipeline end with result code: " + result + " (" + pan.resultString(result) + ")");
             });
             mThread.start();
 

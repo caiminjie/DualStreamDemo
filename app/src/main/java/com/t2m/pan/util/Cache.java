@@ -59,6 +59,10 @@ public class Cache<T> {
 
     @SuppressWarnings("unchecked")
     public void put(T data) {
+        if (data == null) {
+            return;
+        }
+
         synchronized (mCachedBuffs) {
             // debug leak
             if (DEBUG_LEAK) {
