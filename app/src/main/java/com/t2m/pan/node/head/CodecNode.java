@@ -145,7 +145,7 @@ public class CodecNode extends HeadNode<Data> {
 
     private void inputEos(boolean eos) {
         synchronized (mInputEosLock) {
-            Log.i("==MyTest==", "[" + mName + "] inputEos##### " + eos, new Exception());
+            Log.i("==MyTest==", "[" + mName + "] inputEos##### " + eos);
             mInputEos = eos;
         }
     }

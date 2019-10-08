@@ -129,13 +129,8 @@ public class ByteBufferCacheNode extends ConnNode<ByteBufferData, ByteBufferData
                     outData.add(data);
 
                     // remove data from queue, until find a key frame
-                    while (!mQueue.isEmpty() && (data = mQueue.pollFirst()) != null && !data.isKeyFrame()) {
-                        outData.add(data);
-                    }
-
-                    // return the key frame to queue
-                    if (data != null && data.isKeyFrame()) {
-                        mQueue.addFirst(data);
+                    while (!mQueue.isEmpty() && (data = mQueue.peekFirst()) != null && !data.isKeyFrame()) {
+                        outData.add(mQueue.pollFirst());
                     }
                 }
                 return pan.RESULT_CONTINUE; // don't dispatch to next node
