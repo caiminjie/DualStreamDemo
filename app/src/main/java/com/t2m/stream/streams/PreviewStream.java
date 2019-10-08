@@ -1,14 +1,14 @@
 package com.t2m.stream.streams;
 
+import android.hardware.camera2.CameraDevice;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
 import com.t2m.dualstream.Utils;
-import com.t2m.npd.Task;
-import com.t2m.npd.data.SurfaceData;
-import com.t2m.npd.node.process.CameraNode;
-import com.t2m.npd.node.pipeline.SurfaceNode;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.tail.CameraNode;
+import com.t2m.pan.node.head.SurfaceNode;
 import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
 
@@ -51,13 +51,10 @@ public class PreviewStream extends Stream implements IVideoStream<PreviewStream>
         }
 
         // create node
-        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), SurfaceData.TYPE_PREVIEW, mPreviewSurface);
+        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface);
 
-        // config pipeline
-        previewNode.pipeline().addNode(mCameraNode);
-
-        // create task
-        task
+        // config preview pipeline
+        task.addPipeline("Preview")
                 .addNode(mCameraNode)
                 .addNode(previewNode);
 

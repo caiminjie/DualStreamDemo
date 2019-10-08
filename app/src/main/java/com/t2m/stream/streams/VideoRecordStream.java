@@ -4,14 +4,14 @@ import android.util.Log;
 import android.util.Size;
 
 import com.t2m.dualstream.Utils;
-import com.t2m.npd.Task;
-import com.t2m.npd.node.process.AudioNode;
-import com.t2m.npd.node.process.CameraNode;
-import com.t2m.npd.node.pipeline.CodecNode;
-import com.t2m.npd.node.pipeline.H264EncoderNode;
-import com.t2m.npd.node.pipeline.H265EncoderNode;
-import com.t2m.npd.node.pipeline.M4aEncoderNode;
-import com.t2m.npd.node.process.MediaMuxerNode;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.tail.AudioNode;
+import com.t2m.pan.node.tail.CameraNode;
+import com.t2m.pan.node.head.CodecNode;
+import com.t2m.pan.node.head.H264EncoderNode;
+import com.t2m.pan.node.head.H265EncoderNode;
+import com.t2m.pan.node.head.M4aEncoderNode;
+import com.t2m.pan.node.tail.MediaMuxerNode;
 import com.t2m.stream.IAudioStream;
 import com.t2m.stream.IVideoStream;
 import com.t2m.stream.Stream;
@@ -77,33 +77,38 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
 
         // create node
         mVideoEncoderNode = (mVideoCodecType == CODEC_H265) ?
-                new H265EncoderNode(subName("VE265"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate) :
-                new H264EncoderNode(subName("VE264"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate);
-        mAudioEncoderNode = new M4aEncoderNode(subName("AE"));
+                new H265EncoderNode(subName("VE265"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate, CodecNode.TYPE_SURFACE, CodecNode.TYPE_BYTE_BUFFER) :
+                new H264EncoderNode(subName("VE264"), mVideoSize.getWidth(), mVideoSize.getHeight(), mBitRate, mFrameRate, CodecNode.TYPE_SURFACE, CodecNode.TYPE_BYTE_BUFFER);
+        mAudioEncoderNode = new M4aEncoderNode(subName("AE"), CodecNode.TYPE_BYTE_BUFFER, CodecNode.TYPE_BYTE_BUFFER);
         mMuxerNode = new MediaMuxerNode(subName("MX"), mPath, mCameraNode.getSensorOrientation());
 
         // config node
-        mVideoEncoderNode.enableOutput(mEnableOutput);
-        mAudioEncoderNode.enableOutput(mEnableOutput);
+//        mVideoEncoderNode.enableOutput(mEnableOutput);
+//        mAudioEncoderNode.enableOutput(mEnableOutput);
         // TODO
 //        mVideoEncoderNode.setBlockDurationUs(mBlockDurationUs);
 //        mAudioEncoderNode.setBlockDurationUs(mBlockDurationUs);
 
-        // init pipeline
-        mVideoEncoderNode.inputPipelineSurface().addNode(mCameraNode);
-        mVideoEncoderNode.outputPipeline().addNode(mMuxerNode);
-        mAudioEncoderNode.inputPipeline().addNode(mAudioNode);
-        mAudioEncoderNode.outputPipeline().addNode(mMuxerNode);
-
-        // create task
-        task
+        // config video input pipeline
+        task.addPipeline("VideoInput")
                 .addNode(mCameraNode)
-                .addNode(mAudioNode)
-                .addNode(mVideoEncoderNode)
-                .addNode(mAudioEncoderNode)
+                .addNode(mVideoEncoderNode.getInputNode());
+
+        // config video output pipeline
+        task.addPipeline("VideoOutput")
+                .addNode(mVideoEncoderNode.getOutputNode())
                 .addNode(mMuxerNode);
 
-        // return task
+        // config audio input pipeline
+        task.addPipeline("AudioInput")
+                .addNode(mAudioNode)
+                .addNode(mAudioEncoderNode.getInputNode());
+
+        // config audio output pipeline
+        task.addPipeline("AudioOutput")
+                .addNode(mAudioEncoderNode.getOutputNode())
+                .addNode(mMuxerNode);
+
         return true;
     }
 
@@ -158,13 +163,13 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
     }
 
     public void enableOutput(boolean enable) {
-        mEnableOutput = enable;
-        if (mVideoEncoderNode != null) {
-            mVideoEncoderNode.enableOutput(mEnableOutput);
-        }
-        if (mAudioEncoderNode != null) {
-            mAudioEncoderNode.enableOutput(mEnableOutput);
-        }
+//        mEnableOutput = enable;
+//        if (mVideoEncoderNode != null) {
+//            mVideoEncoderNode.enableOutput(mEnableOutput);
+//        }
+//        if (mAudioEncoderNode != null) {
+//            mAudioEncoderNode.enableOutput(mEnableOutput);
+//        }
     }
 
     public boolean enableOutput() {

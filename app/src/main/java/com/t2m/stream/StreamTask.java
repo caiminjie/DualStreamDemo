@@ -4,9 +4,9 @@ import android.util.Log;
 import android.util.Range;
 
 import com.t2m.dualstream.Utils;
-import com.t2m.npd.Task;
-import com.t2m.npd.node.process.AudioNode;
-import com.t2m.npd.node.process.CameraNode;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.tail.AudioNode;
+import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.AudioUploadStream;
 import com.t2m.stream.streams.VideoRecordStream;
@@ -34,6 +34,10 @@ public class StreamTask extends Task {
 
         mCameraNode = cameraNode;
         mAudioNode = audioNode;
+
+        this
+                .addSourceNode(mCameraNode)
+                .addSourceNode(mAudioNode);
     }
 
     @SuppressWarnings("unused")
@@ -42,7 +46,8 @@ public class StreamTask extends Task {
     }
 
     @Override
-    public Task start() {
+    public void start() {
+        Log.i("==MyTest==", "[" + mName + "] StreamTask.start() begin");
         synchronized (mStreams) {
             // init for stream count
             if (mVideoCount > 0) {
@@ -64,16 +69,8 @@ public class StreamTask extends Task {
         }
 
         // start task
-        return super.start();
-    }
-
-    @Override
-    public Task reset() {
-        mAudioCount = 0;
-        mVideoCount = 0;
-        mMinFrameRate = Integer.MAX_VALUE;
-        mMaxFrameRate = 0;
-        return super.reset();
+        super.start();
+        Log.i("==MyTest==", "[" + mName + "] StreamTask.start() end");
     }
 
     @SuppressWarnings("unused | WeakerAccess | UnusedReturnValue")

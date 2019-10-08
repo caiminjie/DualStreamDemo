@@ -22,7 +22,6 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.Fragment;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -45,9 +44,9 @@ import android.widget.TextView;
 
 import com.t2m.dualstream.StreamManager;
 import com.t2m.dualstream.Utils;
-import com.t2m.npd.node.process.AudioNode;
+import com.t2m.pan.node.tail.AudioNode;
+import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.StreamTask;
-import com.t2m.npd.node.process.CameraNode;
 import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.VideoRecordStream;
 

@@ -1,6 +1,6 @@
 package com.t2m.stream.streams;
 
-import com.t2m.npd.Task;
+import com.t2m.pan.Task;
 import com.t2m.stream.Stream;
 import com.t2m.stream.IVideoStream;
 

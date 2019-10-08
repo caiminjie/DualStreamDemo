@@ -9,9 +9,9 @@ import android.os.RemoteException;
 import android.util.Pair;
 import android.util.SparseArray;
 
-import com.t2m.npd.Task;
-import com.t2m.npd.node.process.AudioNode;
-import com.t2m.npd.node.process.CameraNode;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.tail.AudioNode;
+import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.StreamTask;
 
 import java.util.LinkedList;

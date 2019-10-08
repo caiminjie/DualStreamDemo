@@ -1,6 +1,6 @@
 package com.t2m.stream;
 
-import com.t2m.npd.Task;
+import com.t2m.pan.Task;
 
 public abstract class Stream {
     protected String mName;

@@ -2,9 +2,9 @@ package com.t2m.stream.streams;
 
 import android.util.Log;
 
-import com.t2m.npd.Task;
-import com.t2m.npd.node.process.AudioNode;
-import com.t2m.npd.node.pipeline.WavNode;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.tail.AudioNode;
+import com.t2m.pan.node.head.WavHeadNode;
 import com.t2m.stream.Stream;
 
 public class AudioRecordStream extends Stream {
@@ -12,7 +12,7 @@ public class AudioRecordStream extends Stream {
 
     private AudioNode mAudioNode;
 
-    private WavNode mWavNode;
+    private WavHeadNode mWavNode;
 
     private String mPath = null;
     private int mSampleRate;
@@ -34,15 +34,12 @@ public class AudioRecordStream extends Stream {
         }
 
         // create node
-        mWavNode = new WavNode(
-                "WavWriter", mPath,
+        mWavNode = new WavHeadNode(
+                "WavHeadWriter", mPath,
                 mSampleRate, mChannelCount, mAudioFormat);
 
-        // config pipeline
-        mWavNode.getPipeline().addNode(mAudioNode);
-
-        // add node
-        task
+        // config audio pipeline
+        task.addPipeline("Audio")
                 .addNode(mAudioNode)
                 .addNode(mWavNode);
 
