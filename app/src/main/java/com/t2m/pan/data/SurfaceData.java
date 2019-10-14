@@ -10,6 +10,8 @@ public class SurfaceData extends Data {
 
     public int template;
     public Surface surface;
+    public int width;
+    public int height;
 
     public SurfaceData(int id, int type) {
         super(id, type);
