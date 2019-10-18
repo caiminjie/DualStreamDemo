@@ -28,6 +28,9 @@ import android.content.res.Configuration;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraDevice;
+import android.media.AudioFormat;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
@@ -44,20 +47,25 @@ import android.widget.TextView;
 
 import com.t2m.dualstream.StreamManager;
 import com.t2m.dualstream.Utils;
-import com.t2m.pan.node.conn.GlVideoHubNode;
+import com.t2m.pan.Pipeline;
+import com.t2m.pan.Task;
+import com.t2m.pan.node.head.CodecNode;
+import com.t2m.pan.node.head.H264EncoderNode;
+import com.t2m.pan.node.head.M4aEncoderNode;
+import com.t2m.pan.node.head.SurfaceNode;
+import com.t2m.pan.node.head.WavHeadNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
+import com.t2m.pan.node.tail.MediaMuxerNode;
+import com.t2m.pan.node.tail.SmartCameraNode;
 import com.t2m.stream.StreamTask;
 import com.t2m.stream.streams.AudioRecordStream;
-import com.t2m.stream.streams.GlVideoRecordStream;
 import com.t2m.stream.streams.VideoRecordStream;
 
 import java.io.File;
 
-public class Camera2VideoFragment extends Fragment
+public class SmartCamera2VideoFragment extends Fragment
         implements FragmentCompat.OnRequestPermissionsResultCallback {
-
-    private static final boolean USE_GL = false;
 
     private static final SparseIntArray DEFAULT_ORIENTATIONS = new SparseIntArray();
     private static final SparseIntArray INVERSE_ORIENTATIONS = new SparseIntArray();
@@ -93,11 +101,11 @@ public class Camera2VideoFragment extends Fragment
     // TODO
     private String mCameraId = null;
     private Size mPreviewSize;
-    private StreamManager mStreamManager;
 
-    private VideoRecordStream mVideoRecordStream = null;
-    private GlVideoRecordStream mGlVideoRecordStream = null;
-    private AudioRecordStream mAudioRecordStream = null;
+    private CameraNode mCameraNode;
+    private AudioNode mAudioNode;
+    private boolean mIsRecording = false;
+    private Task mTask;
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
@@ -127,17 +135,15 @@ public class Camera2VideoFragment extends Fragment
         }
     };
 
-    public static Camera2VideoFragment newInstance() {
-        return new Camera2VideoFragment();
+    public static SmartCamera2VideoFragment newInstance() {
+        return new SmartCamera2VideoFragment();
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        StreamManager.getService(
-                getContext(),
-                (manager) -> mStreamManager = manager,
-                () -> mStreamManager = null);
+        mCameraNode = new CameraNode("Camera", getContext());
+        mAudioNode = new AudioNode("audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
         return inflater.inflate(R.layout.fragment_camera2_video, container, false);
     }
 
@@ -145,49 +151,18 @@ public class Camera2VideoFragment extends Fragment
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         mTextureView = view.findViewById(R.id.texture);
         view.findViewById(R.id.video).setOnClickListener(v -> {
-            if (mStreamManager == null) {
-                Log.w(TAG, "service not ready");
-                return;
-            }
-
-            if (USE_GL) {
-                if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mGlVideoRecordStream.enableOutput()) {
-                    ((TextView) v).setText(R.string.record);
-                    startGlPreview();
-                } else {
-                    ((TextView) v).setText(R.string.stop);
-                    //startDualVideoRecord();
-                    startGlVideoAudioRecord(false);
-                }
+            if (mIsRecording) {
+                ((TextView) v).setText(R.string.record);
+                startPreview();
             } else {
-                if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mVideoRecordStream.enableOutput()) {
-                    ((TextView) v).setText(R.string.record);
-                    startPreview();
-                } else {
-                    ((TextView) v).setText(R.string.stop);
-                    //startDualVideoRecord();
-                    startVideoAudioRecord(false);
-                }
+                ((TextView) v).setText(R.string.stop);
+                //startDualVideoRecord();
+                startVideoAudioRecord(false);
             }
-
         });
         view.findViewById(R.id.segment).setOnClickListener(v -> {
-            if (mVideoRecordStream != null) {
-                mVideoRecordStream.newSegment(getOutputPath("mp4"));
-            }
-            if (mGlVideoRecordStream != null) {
-                mGlVideoRecordStream.newSegment(getOutputPath("mp4"));
-            }
-            if (mAudioRecordStream != null) {
-                mAudioRecordStream.newSegment(getOutputPath("wav"));
-            }
         });
         view.findViewById(R.id.prerecord).setOnClickListener(v -> {
-            if (USE_GL) {
-                startGlVideoAudioRecord(true);
-            } else {
-                startVideoAudioRecord(true);
-            }
         });
     }
 
@@ -203,9 +178,6 @@ public class Camera2VideoFragment extends Fragment
 
     @Override
     public void onPause() {
-        if (mStreamManager != null) {
-            mStreamManager.release(getContext());
-        }
         onCloseCamera();
         super.onPause();
     }
@@ -218,162 +190,64 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startPreview() {
-        // create task
-        StreamTask task = mStreamManager.createStreamTask("Preview");
+        if (mTask != null) {
+            mTask.stop();
+            mTask.waitForFinish();
+        }
 
-        // config task
-        task.addPreviewStream("Preview")
-                .setPreviewSurface(createPreviewSurface())
-                .setPreviewSize(mPreviewSize);
+        SurfaceNode previewNode = new SurfaceNode("previewSurface", CameraDevice.TEMPLATE_PREVIEW, createPreviewSurface());
 
-        // config
-        mVideoRecordStream = null;
-        mAudioRecordStream = null;
+        mTask = new Task("preview");
+        mTask.addPipeline("preview")
+                .addNode(mCameraNode)
+                .addNode(previewNode);
 
-        // start task
-        mStreamManager.startTask(
-                StreamManager.CHANNEL_BACKGROUND,
-                StreamManager.STATUS_PREVIEW,
-                true,
-                task);
+        mTask.start();
     }
 
     private void startDualVideoRecord() {
-        // create task
-        StreamTask task = mStreamManager.createStreamTask("DualVideo");
-
-        // config task
-        task.addPreviewStream("Preview")
-                .setPreviewSurface(createPreviewSurface())
-                .setPreviewSize(mPreviewSize);
-        task.addVideoRecordStream("Video1")
-                .setPreferredVideoSize(1080, 16, 9)
-                .setVideoCodecType(VideoRecordStream.CODEC_H264)
-                .setBitRate(10000000)
-                .setFrameRate(30)
-                .setPath("/sdcard/DCIM/ds/a.mp4");
-        task.addVideoRecordStream("Video2")
-                .setPreferredVideoSize(720, 16, 9)
-                .setVideoCodecType(VideoRecordStream.CODEC_H264)
-                .setBitRate(10000000)
-                .setFrameRate(30)
-                .setPath("/sdcard/DCIM/ds/b.mp4");
-
-        // start task
-        mStreamManager.startTask(
-                StreamManager.CHANNEL_BACKGROUND,
-                StreamManager.STATUS_RECORDING,
-                true,
-                task);
     }
 
     private void startVideoAudioRecord(boolean isPreRecord) {
-        int status = mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND);
-        if (status == StreamManager.STATUS_RECORDING) {
-            if (mVideoRecordStream.enableOutput() == isPreRecord) {
-                mVideoRecordStream.enableOutput(!isPreRecord);
-            }
-        } else {
-
-            AudioNode audioNode = mStreamManager.getAudioNode();
-
-            // create task
-            StreamTask task = mStreamManager.createStreamTask("DualVideo");
-
-            // config task
-            task.addPreviewStream("Preview")
-                    .setPreviewSurface(createPreviewSurface())
-                    .setPreviewSize(mPreviewSize);
-            mVideoRecordStream = task.addVideoRecordStream("Video")
-                    .setPreferredVideoSize(1080, 16, 9)
-                    .setVideoCodecType(VideoRecordStream.CODEC_H264)
-                    .setBitRate(10000000)
-                    .setFrameRate(30)
-                    .setPath(getOutputPath("mp4"));
-            mAudioRecordStream = task.addAudioRecordStream("Audio")
-                    .setAudioFormat(audioNode.getAudioFormat())
-                    .setChannelCount(audioNode.getChannelCount())
-                    .setSampleRate(audioNode.getSampleRate())
-                    .setPath(getOutputPath("wav"));
-
-            // config
-            mVideoRecordStream.setBlockDurationMs(10 * 1000);
-            mVideoRecordStream.enableOutput(!isPreRecord);
-
-            // start task
-            mStreamManager.startTask(
-                    StreamManager.CHANNEL_BACKGROUND,
-                    StreamManager.STATUS_RECORDING,
-                    true,
-                    task);
+        if (mTask != null) {
+            mTask.stop();
+            mTask.waitForFinish();
         }
-    }
 
-    private void startGlPreview() {
-        // create task
-        StreamTask task = mStreamManager.createStreamTask("Preview");
+        Log.i("==MyTest==", "startVideoAudioRecord()");
+        Size videoSize = Utils.chooseVideoSize(mCameraNode.getAvailableCodecSize(), 1080, new Size(16, 9));
 
-        // config task
-        task.addGlPreviewStream("Preview")
-                .setPreviewSurface(createPreviewSurface())
-                .setPreviewSize(mPreviewSize);
+        SurfaceNode previewNode = new SurfaceNode("previewSurface", CameraDevice.TEMPLATE_PREVIEW, createPreviewSurface());
+        H264EncoderNode videoEncoder = new H264EncoderNode("VE264", videoSize.getWidth(), videoSize.getHeight(), 10000000, 30, CodecNode.TYPE_SURFACE, CodecNode.TYPE_BYTE_BUFFER);
+        M4aEncoderNode audioEncoder = new M4aEncoderNode("AE", CodecNode.TYPE_BYTE_BUFFER, CodecNode.TYPE_BYTE_BUFFER);
+        MediaMuxerNode muxerNode = new MediaMuxerNode("MX", "/sdcard/DCIM/ds/a.mp4", mCameraNode.getSensorOrientation());
+        WavHeadNode wavNode = new WavHeadNode("WavHeadWriter", "/sdcard/DCIM/ds/b.wav", mAudioNode.getSampleRate(), mAudioNode.getChannelCount(), mAudioNode.getAudioFormat());
 
-        // config
-        mGlVideoRecordStream = null;
-        mAudioRecordStream = null;
+        mTask = new Task("dual stream");
+        mTask.addPipeline("preview")
+                .addNode(mCameraNode)
+                .addNode(previewNode);
+        mTask.addPipeline("VideoInput")
+                .addNode(mCameraNode)
+                .addNode(videoEncoder.getInputNode());
+        mTask.addPipeline("VideoOutput")
+                .addNode(videoEncoder.getOutputNode())
+                .addNode(muxerNode);
+        mTask.addPipeline("AudioInput")
+                .addNode(mAudioNode)
+                .addNode(audioEncoder.getInputNode());
+        mTask.addPipeline("AudioOutput")
+                .addNode(audioEncoder.getOutputNode())
+                .addNode(muxerNode);
+        mTask.addPipeline("AudioWav")
+                .addNode(mAudioNode)
+                .addNode(wavNode);
 
-        // start task
-        mStreamManager.startTask(
-                StreamManager.CHANNEL_BACKGROUND,
-                StreamManager.STATUS_PREVIEW,
-                true,
-                task);
-    }
-
-    private void startGlVideoAudioRecord(boolean isPreRecord) {
-        int status = mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND);
-        if (status == StreamManager.STATUS_RECORDING) {
-            if (mVideoRecordStream.enableOutput() == isPreRecord) {
-                mVideoRecordStream.enableOutput(!isPreRecord);
-            }
-        } else {
-
-            AudioNode audioNode = mStreamManager.getAudioNode();
-
-            // create task
-            StreamTask task = mStreamManager.createStreamTask("DualVideo");
-
-            // config task
-            task.addGlPreviewStream("Preview")
-                    .setPreviewSurface(createPreviewSurface())
-                    .setPreviewSize(mPreviewSize);
-            mGlVideoRecordStream = task.addGlVideoRecordStream("Video")
-                    .setPreferredVideoSize(1080, 16, 9)
-                    .setVideoCodecType(VideoRecordStream.CODEC_H264)
-                    .setBitRate(10000000)
-                    .setFrameRate(30)
-                    .setPath(getOutputPath("mp4"));
-            mAudioRecordStream = task.addAudioRecordStream("Audio")
-                    .setAudioFormat(audioNode.getAudioFormat())
-                    .setChannelCount(audioNode.getChannelCount())
-                    .setSampleRate(audioNode.getSampleRate())
-                    .setPath(getOutputPath("wav"));
-
-            // config
-            mGlVideoRecordStream.setBlockDurationMs(10 * 1000);
-            mGlVideoRecordStream.enableOutput(!isPreRecord);
-
-            // start task
-            mStreamManager.startTask(
-                    StreamManager.CHANNEL_BACKGROUND,
-                    StreamManager.STATUS_RECORDING,
-                    true,
-                    task);
-        }
+        mTask.start();
     }
 
     private void onOpenCamera() {
-        final CameraNode cameraNode = mStreamManager.getCameraNode();
+        final CameraNode cameraNode = mCameraNode;
         if (mCameraId == null) {
             mCameraId = cameraNode.getCameraIdList()[0];
         }
@@ -399,21 +273,12 @@ public class Camera2VideoFragment extends Fragment
                 configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
             });
 
-            if (USE_GL) {
-                startGlPreview();
-            } else {
-                startPreview();
-            }
+            startPreview();
         });
-
-        GlVideoHubNode hubNode = mStreamManager.getVideoHubNode();
-        hubNode.inputSize(GlVideoHubNode.bestSurfaceSize(cameraNode.getAvailableSurfaceSize()));
     }
 
     private void onCloseCamera() {
-        if (mStreamManager != null) {
-            mStreamManager.getCameraNode().closeCamera();
-        }
+        mCameraNode.closeCamera();
     }
 
     /**
@@ -481,7 +346,7 @@ public class Camera2VideoFragment extends Fragment
     }
 
     /**
-     * Configures the necessary {@link android.graphics.Matrix} transformation to `mTextureView`.
+     * Configures the necessary {@link Matrix} transformation to `mTextureView`.
      * This method should not to be called until the camera preview size is determined in
      * openCamera, or until the size of `mTextureView` is fixed.
      *

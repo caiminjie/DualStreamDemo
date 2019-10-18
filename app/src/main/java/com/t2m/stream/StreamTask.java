@@ -5,10 +5,13 @@ import android.util.Range;
 
 import com.t2m.dualstream.Utils;
 import com.t2m.pan.Task;
+import com.t2m.pan.node.conn.GlVideoHubNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.streams.AudioRecordStream;
 import com.t2m.stream.streams.AudioUploadStream;
+import com.t2m.stream.streams.GlPreviewStream;
+import com.t2m.stream.streams.GlVideoRecordStream;
 import com.t2m.stream.streams.VideoRecordStream;
 import com.t2m.stream.streams.PreviewStream;
 import com.t2m.stream.streams.VideoUploadStream;
@@ -22,6 +25,7 @@ public class StreamTask extends Task {
     private final List<Stream> mStreams = new ArrayList<>();
     private CameraNode mCameraNode;
     private AudioNode mAudioNode;
+    private GlVideoHubNode mVideoHubNode;
 
     @SuppressWarnings("unused")
     private int mAudioCount = 0;
@@ -29,11 +33,12 @@ public class StreamTask extends Task {
     private int mMinFrameRate = Integer.MAX_VALUE;
     private int mMaxFrameRate = 0;
 
-    public StreamTask(String name, CameraNode cameraNode, AudioNode audioNode) {
+    public StreamTask(String name, CameraNode cameraNode, AudioNode audioNode, GlVideoHubNode videoHubNode) {
         super(name);
 
         mCameraNode = cameraNode;
         mAudioNode = audioNode;
+        mVideoHubNode = videoHubNode;
 
         this
                 .addSourceNode(mCameraNode)
@@ -85,7 +90,12 @@ public class StreamTask extends Task {
             if (stream.isAudio()) {
                 mAudioCount ++;
             }
-            if (stream.isVideo()) {
+            if (stream.isGlVideo()) {
+                mVideoCount  = 1;
+                int frameRate = ((IVideoStream) stream).getFrameRate();
+                if (frameRate > mMaxFrameRate)  mMaxFrameRate = frameRate;
+                if (frameRate < mMinFrameRate)  mMinFrameRate = frameRate;
+            } else if (stream.isVideo()) {
                 mVideoCount ++;
                 int frameRate = ((IVideoStream) stream).getFrameRate();
                 if (frameRate > mMaxFrameRate)  mMaxFrameRate = frameRate;
@@ -108,6 +118,20 @@ public class StreamTask extends Task {
     @SuppressWarnings("unused")
     public VideoRecordStream addVideoRecordStream(String name) {
         VideoRecordStream stream = new VideoRecordStream(name, mCameraNode, mAudioNode);
+        addStream(stream);
+        return stream;
+    }
+
+    @SuppressWarnings("unused")
+    public GlPreviewStream addGlPreviewStream(String name) {
+        GlPreviewStream stream = new GlPreviewStream(name, mCameraNode, mVideoHubNode);
+        addStream(stream);
+        return stream;
+    }
+
+    @SuppressWarnings("unused")
+    public GlVideoRecordStream addGlVideoRecordStream(String name) {
+        GlVideoRecordStream stream = new GlVideoRecordStream(name, mCameraNode, mAudioNode, mVideoHubNode);
         addStream(stream);
         return stream;
     }

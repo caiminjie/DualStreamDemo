@@ -23,6 +23,10 @@ public abstract class Stream {
         return this instanceof IVideoStream;
     }
 
+    public boolean isGlVideo() {
+        return this instanceof IGlVideoStream;
+    }
+
     protected String subName(String subName) {
         return mName + "#" + subName;
     }

@@ -5,6 +5,7 @@ package com.t2m.dualstream;
 interface IStreamService {
     int getCameraNode();
     int getAudioNode();
+    int getVideoHubNode();
 
     int getStatus(int channel);
     int createStreamTask(String name);

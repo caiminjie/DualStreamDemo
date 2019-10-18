@@ -11,6 +11,7 @@ import android.os.RemoteException;
 import android.util.Log;
 
 import com.t2m.pan.Task;
+import com.t2m.pan.node.conn.GlVideoHubNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.StreamTask;
@@ -102,6 +103,15 @@ public class StreamManager {
     public AudioNode getAudioNode() {
         try {
             return StreamService.getData(mService.getAudioNode());
+        } catch (RemoteException e) {
+            Log.e(TAG, "remote exception", e);
+            return null;
+        }
+    }
+
+    public GlVideoHubNode getVideoHubNode() {
+        try {
+            return StreamService.getData(mService.getVideoHubNode());
         } catch (RemoteException e) {
             Log.e(TAG, "remote exception", e);
             return null;

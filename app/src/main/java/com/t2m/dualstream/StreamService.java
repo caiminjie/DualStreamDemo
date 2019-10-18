@@ -10,6 +10,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 
 import com.t2m.pan.Task;
+import com.t2m.pan.node.conn.GlVideoHubNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.stream.StreamTask;
@@ -23,6 +24,7 @@ public class StreamService extends Service {
     private final Channel[] mChannels = new Channel[StreamManager.CHANNEL_COUNT];
     private CameraNode mCameraNode;
     private AudioNode mAudioNode;
+    private GlVideoHubNode mVideoHubNode;
 
     private static class Channel {
         private final LinkedList<Pair<Integer, Task>> mQueue = new LinkedList<>();
@@ -94,7 +96,8 @@ public class StreamService extends Service {
     public void onCreate() {
         super.onCreate();
         mCameraNode = new CameraNode("Camera", this);
-        mAudioNode = new AudioNode("audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
+        mAudioNode = new AudioNode("Audio", MediaRecorder.AudioSource.MIC, 48000, 2, AudioFormat.ENCODING_PCM_16BIT);
+        mVideoHubNode = new GlVideoHubNode("VideoHub");
     }
 
     @Override
@@ -158,13 +161,18 @@ public class StreamService extends Service {
         }
 
         @Override
+        public int getVideoHubNode() throws RemoteException {
+            return StreamService.putData(mVideoHubNode);
+        }
+
+        @Override
         public int getStatus(int channel) throws RemoteException {
             return mChannels[channel].status();
         }
 
         @Override
         public int createStreamTask(String name) throws RemoteException {
-            return putData(new StreamTask(name, mCameraNode, mAudioNode));
+            return putData(new StreamTask(name, mCameraNode, mAudioNode, mVideoHubNode));
         }
 
 
