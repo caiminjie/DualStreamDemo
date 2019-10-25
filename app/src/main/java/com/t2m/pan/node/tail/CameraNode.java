@@ -122,18 +122,12 @@ public class CameraNode extends TailNode<SurfaceData> {
             mCameraDevice.createCaptureSession(mSurfaces, new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {
-                    Message msg = new Message();
-                    msg.what = MSG_SESSION_CONFIGURED;
-                    msg.obj = session;
-                    mEventHandler.sendMessage(msg);
+                    mEventHandler.obtainMessage(MSG_SESSION_CONFIGURED, session).sendToTarget();
                 }
 
                 @Override
                 public void onConfigureFailed(CameraCaptureSession session) {
-                    Message msg = new Message();
-                    msg.what = MSG_SESSION_CONFIGURE_FAILED;
-                    msg.obj = session;
-                    mEventHandler.sendMessage(msg);
+                    mEventHandler.obtainMessage(MSG_SESSION_CONFIGURE_FAILED, session).sendToTarget();
                 }
             }, mCameraHandler);
         } catch (CameraAccessException e) {
@@ -309,27 +303,17 @@ public class CameraNode extends TailNode<SurfaceData> {
             mCameraManager.openCamera(mCameraId, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice camera) {
-                    Message msg = new Message();
-                    msg.what = MSG_CAMERA_OPENED;
-                    msg.obj = camera;
-                    mEventHandler.sendMessage(msg);
+                    mEventHandler.obtainMessage(MSG_CAMERA_OPENED, camera).sendToTarget();
                 }
 
                 @Override
                 public void onDisconnected(CameraDevice camera) {
-                    Message msg = new Message();
-                    msg.what = MSG_CAMERA_DISCONNECTED;
-                    msg.obj = camera;
-                    mEventHandler.sendMessage(msg);
+                    mEventHandler.obtainMessage(MSG_CAMERA_DISCONNECTED, camera).sendToTarget();
                 }
 
                 @Override
                 public void onError(CameraDevice camera, int error) {
-                    Message msg = new Message();
-                    msg.what = MSG_CAMERA_ERROR;
-                    msg.obj = camera;
-                    msg.arg1 = error;
-                    mEventHandler.sendMessage(msg);
+                    mEventHandler.obtainMessage(MSG_CAMERA_ERROR, error, 0, camera).sendToTarget();
                 }
             }, mCameraHandler);
         } catch (CameraAccessException | NullPointerException e) {

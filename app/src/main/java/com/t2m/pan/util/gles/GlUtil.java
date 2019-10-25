@@ -16,10 +16,12 @@
 
 package com.t2m.pan.util.gles;
 
+import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.Matrix;
 import android.util.Log;
+import android.util.Size;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -191,5 +193,28 @@ public class GlUtil {
                 Log.i(TAG, "iversion: " + majorVersion + "." + minorVersion);
             }
         }
+    }
+
+    public static int createTexture() {
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        return textures[0];
+    }
+
+    public static int[] createTexture(int n) {
+        int[] textures = new int[n];
+        GLES20.glGenTextures(n, textures, 0);
+        return textures;
+    }
+
+    public static void releaseTexture(int texture) {
+        GLES20.glDeleteTextures(1, new int[]{texture}, 0);
+    }
+
+    public static SurfaceTexture createSurfaceTexture(int texture, Size size, SurfaceTexture.OnFrameAvailableListener listener) {
+        SurfaceTexture surfaceTexture = new SurfaceTexture(texture);
+        surfaceTexture.setDefaultBufferSize(size.getWidth(), size.getHeight());
+        surfaceTexture.setOnFrameAvailableListener(listener);
+        return surfaceTexture;
     }
 }

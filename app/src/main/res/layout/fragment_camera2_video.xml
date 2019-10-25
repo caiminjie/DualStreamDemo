@@ -29,7 +29,6 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
-        android:layout_below="@id/texture"
         android:background="#4285f4">
 
         <Button

@@ -1,5 +1,6 @@
 package com.t2m.pan.node.head;
 
+import android.util.Size;
 import android.view.Surface;
 
 import com.t2m.pan.Data;
@@ -13,12 +14,14 @@ public class SurfaceNode extends HeadNode<SurfaceData> {
     private boolean mIsOpened = false;
     private int mTemplate;
     private Surface mSurface;
+    private Size mSize;
 
-    public SurfaceNode(String name, int template, Surface surface) {
+    public SurfaceNode(String name, int template, Surface surface, Size size) {
         super(name);
 
         mTemplate = template;
         mSurface = surface;
+        mSize = size;
     }
 
     @Override
@@ -43,6 +46,8 @@ public class SurfaceNode extends HeadNode<SurfaceData> {
     protected int onBindData(SurfaceData data) {
         data.template = mTemplate;
         data.surface = mSurface;
+        data.width = mSize.getWidth();
+        data.height = mSize.getHeight();
         return pan.RESULT_OK;
     }
 

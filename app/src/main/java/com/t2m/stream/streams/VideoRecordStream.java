@@ -6,6 +6,7 @@ import android.util.Size;
 import com.t2m.dualstream.Utils;
 import com.t2m.pan.Task;
 import com.t2m.pan.node.conn.ByteBufferCacheNode;
+import com.t2m.pan.node.conn.GlNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.pan.node.head.CodecNode;
@@ -86,6 +87,7 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         mVideoCacheNode = new ByteBufferCacheNode("VC");
         mAudioCacheNode = new ByteBufferCacheNode("AC");
         mMuxerNode = new MediaMuxerNode(subName("MX"), mPath, mCameraNode.getSensorOrientation());
+        GlNode glNode = new GlNode("WaterMark");
 
 
         // config node
@@ -94,9 +96,14 @@ public class VideoRecordStream extends Stream implements IAudioStream<VideoRecor
         mVideoCacheNode.cacheDurationUs(mBlockDurationUs);
         mAudioCacheNode.cacheDurationUs(mBlockDurationUs);
 
-        // config video input pipeline
-        task.addPipeline("VideoInput")
+        // config video to GlNode input
+        task.addPipeline("VideoGlInput")
                 .addNode(mCameraNode)
+                .addNode(glNode.getInputNode());
+
+        // config video to codec input
+        task.addPipeline("VideoGlOutput")
+                .addNode(glNode.getOutputNode())
                 .addNode(mVideoEncoderNode.getInputNode());
 
         // config video output pipeline

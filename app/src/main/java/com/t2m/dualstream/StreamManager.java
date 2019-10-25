@@ -14,6 +14,7 @@ import com.t2m.pan.Task;
 import com.t2m.pan.node.conn.GlVideoHubNode;
 import com.t2m.pan.node.tail.AudioNode;
 import com.t2m.pan.node.tail.CameraNode;
+import com.t2m.stream.Stream;
 import com.t2m.stream.StreamTask;
 
 public class StreamManager {
@@ -37,12 +38,58 @@ public class StreamManager {
     private static Handler sHandler = new Handler();
     private static ServiceConnection sConnection = null;
 
+    private static final Object sInstanceLock = new Object();
+
     public interface OnServiceReadyListener {
         void onServiceReady(StreamManager manager);
     }
 
     public interface OnServiceDiedListener {
         void onServiceDied();
+    }
+
+    public static void initInstance(Context context) {
+        synchronized (sInstanceLock) {
+            StreamManager.getService(
+                    context,
+                    StreamManager::setInstance,
+                    () -> StreamManager.setInstance(null));
+        }
+    }
+
+    public static StreamManager getInstanceAwait() {
+        synchronized (sInstanceLock) {
+            while (sManager == null) {
+                try {
+                    sInstanceLock.wait();
+                } catch (InterruptedException e) {
+                    Log.w(TAG, "wait instance interrupted");
+                }
+            }
+            return sManager;
+        }
+    }
+
+    public static StreamManager getInstance() {
+        synchronized (sInstanceLock) {
+            return sManager;
+        }
+    }
+
+    public static void releaseInstance(Context context) {
+        synchronized (sInstanceLock) {
+            if (sManager != null) {
+                sManager.release(context);
+                sManager = null;
+            }
+        }
+    }
+
+    private static void setInstance(StreamManager manager) {
+        synchronized (sInstanceLock) {
+            sManager = manager;
+            sInstanceLock.notifyAll();
+        }
     }
 
     public static void getService(Context context, final OnServiceReadyListener readyListener, final OnServiceDiedListener diedListener) {
@@ -59,7 +106,7 @@ public class StreamManager {
         context.bindService(intent, sConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
-                sManager = new StreamManager(service);
+                setInstance(new StreamManager(service));
                 if (readyListener != null) {
                     readyListener.onServiceReady(sManager);
                 }
@@ -67,7 +114,7 @@ public class StreamManager {
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-                sManager = null;
+                setInstance(null);
                 sConnection = null;
                 if (diedListener != null) {
                     diedListener.onServiceDied();

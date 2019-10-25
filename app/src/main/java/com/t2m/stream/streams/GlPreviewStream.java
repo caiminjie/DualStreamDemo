@@ -55,7 +55,7 @@ public class GlPreviewStream extends Stream implements IGlVideoStream<GlPreviewS
         }
 
         // create node
-        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface);
+        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface, mPreviewSize);
 
         // config video hub input pipeline
         task.addPipeline("VideoHubInput")

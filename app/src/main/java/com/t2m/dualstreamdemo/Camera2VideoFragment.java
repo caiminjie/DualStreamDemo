@@ -29,6 +29,8 @@ import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.app.ActivityCompat;
@@ -93,11 +95,21 @@ public class Camera2VideoFragment extends Fragment
     // TODO
     private String mCameraId = null;
     private Size mPreviewSize;
-    private StreamManager mStreamManager;
+
+    private boolean mViewInitialized = false;
+    private final Object mViewInitializedLock = new Object();
 
     private VideoRecordStream mVideoRecordStream = null;
     private GlVideoRecordStream mGlVideoRecordStream = null;
     private AudioRecordStream mAudioRecordStream = null;
+
+    private static final int MSG_INIT = 0;
+    private static final int MSG_EXIT = 1;
+    private static final int MSG_OPEN_CAMERA = 2;
+    private static final int MSG_CLOSE_CAMERA = 3;
+
+    private HandlerThread mEventThread;
+    private Handler mEventHandler;
 
     /**
      * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
@@ -108,7 +120,7 @@ public class Camera2VideoFragment extends Fragment
 
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
-            onOpenCamera();
+            mEventHandler.sendEmptyMessage(MSG_OPEN_CAMERA);
         }
 
         @Override
@@ -131,13 +143,37 @@ public class Camera2VideoFragment extends Fragment
         return new Camera2VideoFragment();
     }
 
+    public Camera2VideoFragment() {
+        super();
+
+        mEventThread = new HandlerThread("CameraEvent");
+        mEventThread.start();
+        mEventHandler = new Handler(mEventThread.getLooper(),
+                msg -> {
+                    switch (msg.what) {
+                        case MSG_INIT: {
+                            StreamManager.initInstance(getContext());
+                            initCamera();
+                        } return true;
+                        case MSG_EXIT: {
+                            StreamManager.releaseInstance(getContext());
+                        } return true;
+                        case MSG_OPEN_CAMERA: {
+                            onOpenCamera();
+                        } return true;
+                        case MSG_CLOSE_CAMERA: {
+                            onCloseCamera();
+                        } return true;
+                        default: {
+
+                        } return false;
+                    }
+                });
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        StreamManager.getService(
-                getContext(),
-                (manager) -> mStreamManager = manager,
-                () -> mStreamManager = null);
         return inflater.inflate(R.layout.fragment_camera2_video, container, false);
     }
 
@@ -145,13 +181,10 @@ public class Camera2VideoFragment extends Fragment
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         mTextureView = view.findViewById(R.id.texture);
         view.findViewById(R.id.video).setOnClickListener(v -> {
-            if (mStreamManager == null) {
-                Log.w(TAG, "service not ready");
-                return;
-            }
+            StreamManager sm = StreamManager.getInstance();
 
             if (USE_GL) {
-                if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mGlVideoRecordStream.enableOutput()) {
+                if (sm.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mGlVideoRecordStream.enableOutput()) {
                     ((TextView) v).setText(R.string.record);
                     startGlPreview();
                 } else {
@@ -160,7 +193,7 @@ public class Camera2VideoFragment extends Fragment
                     startGlVideoAudioRecord(false);
                 }
             } else {
-                if (mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mVideoRecordStream.enableOutput()) {
+                if (sm.getStatus(StreamManager.CHANNEL_BACKGROUND) == StreamManager.STATUS_RECORDING && mVideoRecordStream.enableOutput()) {
                     ((TextView) v).setText(R.string.record);
                     startPreview();
                 } else {
@@ -189,13 +222,42 @@ public class Camera2VideoFragment extends Fragment
                 startVideoAudioRecord(true);
             }
         });
+
+        mEventHandler.sendEmptyMessage(MSG_INIT);
+    }
+
+    private void initCamera() {
+        // init camera id
+        CameraNode cameraNode = StreamManager.getInstanceAwait().getCameraNode();
+        if (mCameraId == null) {
+            mCameraId = cameraNode.getCameraIdList()[0];
+        }
+        cameraNode.setCameraId(mCameraId);
+
+        // init camera
+        mPreviewSize = Utils.chooseOptimalSize(
+                cameraNode.getAvailableSurfaceSize(),
+                mTextureView.getWidth(), mTextureView.getHeight(),
+                16, 9);
+        Log.i(TAG, "preview: [" + mPreviewSize + "]");
+        Log.i("==MyTest==", "preview: [" + mPreviewSize + "], surface: [" + mTextureView.getWidth() + ", " + mTextureView.getHeight() + "]");
+
+        mTextureView.post(() -> configureTransform(mTextureView.getWidth(), mTextureView.getHeight()));
+
+        synchronized (mViewInitializedLock) {
+            mViewInitialized = true;
+            mViewInitializedLock.notifyAll();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
+
+        mEventHandler.sendEmptyMessage(MSG_INIT);
+
         if (mTextureView.isAvailable()) {
-            onOpenCamera();
+            mEventHandler.sendEmptyMessage(MSG_OPEN_CAMERA);
         } else {
             mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
@@ -203,10 +265,9 @@ public class Camera2VideoFragment extends Fragment
 
     @Override
     public void onPause() {
-        if (mStreamManager != null) {
-            mStreamManager.release(getContext());
-        }
-        onCloseCamera();
+        mEventHandler.sendEmptyMessage(MSG_CLOSE_CAMERA);
+        mEventHandler.sendEmptyMessage(MSG_EXIT);
+        //mEventThread.quitSafely();
         super.onPause();
     }
 
@@ -218,8 +279,10 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startPreview() {
+        StreamManager sm = StreamManager.getInstance();
+
         // create task
-        StreamTask task = mStreamManager.createStreamTask("Preview");
+        StreamTask task = sm.createStreamTask("Preview");
 
         // config task
         task.addPreviewStream("Preview")
@@ -231,7 +294,7 @@ public class Camera2VideoFragment extends Fragment
         mAudioRecordStream = null;
 
         // start task
-        mStreamManager.startTask(
+        sm.startTask(
                 StreamManager.CHANNEL_BACKGROUND,
                 StreamManager.STATUS_PREVIEW,
                 true,
@@ -239,8 +302,10 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startDualVideoRecord() {
+        StreamManager sm = StreamManager.getInstance();
+
         // create task
-        StreamTask task = mStreamManager.createStreamTask("DualVideo");
+        StreamTask task = sm.createStreamTask("DualVideo");
 
         // config task
         task.addPreviewStream("Preview")
@@ -260,7 +325,7 @@ public class Camera2VideoFragment extends Fragment
                 .setPath("/sdcard/DCIM/ds/b.mp4");
 
         // start task
-        mStreamManager.startTask(
+        sm.startTask(
                 StreamManager.CHANNEL_BACKGROUND,
                 StreamManager.STATUS_RECORDING,
                 true,
@@ -268,17 +333,18 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startVideoAudioRecord(boolean isPreRecord) {
-        int status = mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND);
+        StreamManager sm = StreamManager.getInstance();
+
+        int status = sm.getStatus(StreamManager.CHANNEL_BACKGROUND);
         if (status == StreamManager.STATUS_RECORDING) {
             if (mVideoRecordStream.enableOutput() == isPreRecord) {
                 mVideoRecordStream.enableOutput(!isPreRecord);
             }
         } else {
-
-            AudioNode audioNode = mStreamManager.getAudioNode();
+            AudioNode audioNode = sm.getAudioNode();
 
             // create task
-            StreamTask task = mStreamManager.createStreamTask("DualVideo");
+            StreamTask task = sm.createStreamTask("DualVideo");
 
             // config task
             task.addPreviewStream("Preview")
@@ -301,7 +367,7 @@ public class Camera2VideoFragment extends Fragment
             mVideoRecordStream.enableOutput(!isPreRecord);
 
             // start task
-            mStreamManager.startTask(
+            sm.startTask(
                     StreamManager.CHANNEL_BACKGROUND,
                     StreamManager.STATUS_RECORDING,
                     true,
@@ -310,8 +376,10 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startGlPreview() {
+        StreamManager sm = StreamManager.getInstance();
+
         // create task
-        StreamTask task = mStreamManager.createStreamTask("Preview");
+        StreamTask task = sm.createStreamTask("Preview");
 
         // config task
         task.addGlPreviewStream("Preview")
@@ -323,7 +391,7 @@ public class Camera2VideoFragment extends Fragment
         mAudioRecordStream = null;
 
         // start task
-        mStreamManager.startTask(
+        sm.startTask(
                 StreamManager.CHANNEL_BACKGROUND,
                 StreamManager.STATUS_PREVIEW,
                 true,
@@ -331,17 +399,18 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void startGlVideoAudioRecord(boolean isPreRecord) {
-        int status = mStreamManager.getStatus(StreamManager.CHANNEL_BACKGROUND);
+        StreamManager sm = StreamManager.getInstance();
+
+        int status = sm.getStatus(StreamManager.CHANNEL_BACKGROUND);
         if (status == StreamManager.STATUS_RECORDING) {
             if (mVideoRecordStream.enableOutput() == isPreRecord) {
                 mVideoRecordStream.enableOutput(!isPreRecord);
             }
         } else {
-
-            AudioNode audioNode = mStreamManager.getAudioNode();
+            AudioNode audioNode = sm.getAudioNode();
 
             // create task
-            StreamTask task = mStreamManager.createStreamTask("DualVideo");
+            StreamTask task = sm.createStreamTask("DualVideo");
 
             // config task
             task.addGlPreviewStream("Preview")
@@ -364,7 +433,7 @@ public class Camera2VideoFragment extends Fragment
             mGlVideoRecordStream.enableOutput(!isPreRecord);
 
             // start task
-            mStreamManager.startTask(
+            sm.startTask(
                     StreamManager.CHANNEL_BACKGROUND,
                     StreamManager.STATUS_RECORDING,
                     true,
@@ -373,32 +442,20 @@ public class Camera2VideoFragment extends Fragment
     }
 
     private void onOpenCamera() {
-        final CameraNode cameraNode = mStreamManager.getCameraNode();
-        if (mCameraId == null) {
-            mCameraId = cameraNode.getCameraIdList()[0];
-        }
-        cameraNode.setCameraId(mCameraId);
-        cameraNode.openCamera(() -> {
-            mPreviewSize = Utils.chooseOptimalSize(
-                    cameraNode.getAvailableSurfaceSize(),
-                    mTextureView.getWidth(), mTextureView.getHeight(),
-                    16, 9);
-            Log.i(TAG, "preview: [" + mPreviewSize + "]");
-
-            mTextureView.post(() -> {
-                int orientation = getResources().getConfiguration().orientation;
-                int sensorOrientation = cameraNode.getSensorOrientation();
-                boolean sensorLandscape = sensorOrientation == 0 || sensorOrientation == 180;
-                boolean deviceLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE;
-
-                if (deviceLandscape ^ sensorLandscape) {
-                    mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-                } else {
-                    mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
+        synchronized (mViewInitializedLock) {
+            while (! mViewInitialized) {
+                try {
+                    mViewInitializedLock.wait();
+                } catch (InterruptedException e) {
+                    Log.w(TAG, "wait view initialized interrupted.");
                 }
-                configureTransform(mTextureView.getWidth(), mTextureView.getHeight());
-            });
+            }
+        }
 
+        StreamManager sm = StreamManager.getInstance();
+
+        final CameraNode cameraNode = sm.getCameraNode();
+        cameraNode.openCamera(() -> {
             if (USE_GL) {
                 startGlPreview();
             } else {
@@ -406,14 +463,12 @@ public class Camera2VideoFragment extends Fragment
             }
         });
 
-        GlVideoHubNode hubNode = mStreamManager.getVideoHubNode();
+        GlVideoHubNode hubNode = sm.getVideoHubNode();
         hubNode.inputSize(GlVideoHubNode.bestSurfaceSize(cameraNode.getAvailableSurfaceSize()));
     }
 
     private void onCloseCamera() {
-        if (mStreamManager != null) {
-            mStreamManager.getCameraNode().closeCamera();
-        }
+        StreamManager.getInstance().getCameraNode().closeCamera();
     }
 
     /**

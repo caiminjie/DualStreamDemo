@@ -1,5 +1,6 @@
 package com.t2m.stream.streams;
 
+import android.graphics.Color;
 import android.hardware.camera2.CameraDevice;
 import android.util.Log;
 import android.util.Size;
@@ -7,6 +8,7 @@ import android.view.Surface;
 
 import com.t2m.dualstream.Utils;
 import com.t2m.pan.Task;
+import com.t2m.pan.node.conn.GlNode;
 import com.t2m.pan.node.tail.CameraNode;
 import com.t2m.pan.node.head.SurfaceNode;
 import com.t2m.stream.IVideoStream;
@@ -51,11 +53,18 @@ public class PreviewStream extends Stream implements IVideoStream<PreviewStream>
         }
 
         // create node
-        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface);
+        SurfaceNode previewNode = new SurfaceNode(subName("Preview"), CameraDevice.TEMPLATE_PREVIEW, mPreviewSurface, mPreviewSize);
+        GlNode glNode = new GlNode("WaterMark");
+
+        glNode.addWaterMark("TEXT", 100, 100, Color.RED, 100);
+        glNode.addWaterMark("TEXT2", 200, 400, Color.GREEN, 100);
 
         // config preview pipeline
-        task.addPipeline("Preview")
+        task.addPipeline("PreviewGlInput")
                 .addNode(mCameraNode)
+                .addNode(glNode.getInputNode());
+        task.addPipeline("PreviewGlOutput")
+                .addNode(glNode.getOutputNode())
                 .addNode(previewNode);
 
         // return

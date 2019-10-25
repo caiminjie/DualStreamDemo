@@ -402,6 +402,8 @@ public class CodecNode extends HeadNode<Data> {
 
             // bind
             data.template = SurfaceData.TYPE_RECORD;
+            data.width = mFormat.getInteger(MediaFormat.KEY_WIDTH);
+            data.height = mFormat.getInteger(MediaFormat.KEY_HEIGHT);
             data.surface = mInputSurface;
             return pan.RESULT_OK;
         }
